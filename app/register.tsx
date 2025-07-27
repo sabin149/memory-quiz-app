@@ -1,9 +1,10 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useQuizStore } from '../store';
+
 
 type FormData = {
   name: string;
@@ -24,9 +25,14 @@ export default function RegisterScreen() {
     },
     mode: 'onSubmit',
   });
-  const { login } = useQuizStore();
+  const { login, user } = useQuizStore();
   const router = useRouter();
   const password = watch('password');
+
+  // If already logged in, redirect to home
+  if (user) {
+    return <Redirect href="/home" />;
+  }
 
   const onSubmit = (data: FormData) => {
     if (data.password !== data.confirmPassword) {
@@ -43,7 +49,7 @@ export default function RegisterScreen() {
       text1: 'Success',
       text2: 'Registered successfully!',
     });
-    router.push('/home');
+    router.replace('/home');
   };
 
   return (

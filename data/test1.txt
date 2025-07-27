@@ -1,0 +1,24 @@
+React Native Navigation Error
+The error "Attempted to navigate before mounting the Root Layout component. Ensure the Root Layout component is rendering a Slot, or other navigator on the first render" occurs in React Native when using Expo Router, specifically in version 2. This error typically arises when navigation is attempted before the Root Layout component has been fully mounted.
+
+To resolve this issue, you need to ensure that the Root Layout component is rendering a Slot or another navigator before any navigation occurs. One common solution is to use the useRootNavigationState hook to wait for the navigation state to be ready before performing any redirects.
+
+For example, you can use the following approach:
+
+import { useRootNavigationState } from 'expo-router';
+
+const navigationState = useRootNavigationState();
+
+React.useEffect(() => {
+  if (!navigationState?.key) return;
+  // Perform your redirect here
+  router.replace('/your-route');
+}, [user, segments, navigationState]);
+
+Another approach is to use a setTimeout or setImmediate to delay the navigation until the Root Layout is fully mounted, although this is considered a workaround.
+
+Additionally, if you are using a custom provider or wrapping the Root Layout in another component, ensure that the providers are placed inside the Root Layout itself, not outside. This ensures that the Root Layout is properly mounted before any navigation occurs.
+
+If you are encountering this error during authentication flows, make sure that any navigation logic is deferred until the Root Layout's content (the Slot) is mounted. This can be achieved by moving the conditional logic down a level and using a group.
+
+In some cases, the error might be related to the Android launch mode configuration. Switching from "standard" to "singleTask" launch mode can sometimes resolve the issue, although this is more of a workaround and might not be suitable for all scenarios.

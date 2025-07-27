@@ -1,34 +1,72 @@
+import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, FlatList, Pressable, Text, View } from 'react-native';
+import ConversationForm from '../components/ConversationForm';
 import { useQuizStore } from '../store';
 
 export default function HomeScreen() {
-  const { conversations, addConversation, tagConversation, logout, user } = useQuizStore();
+  const { conversations, tagConversation, logout, user } = useQuizStore();
   const router = useRouter();
+  const [uploading, setUploading] = useState(false);
 
   if (!user) {
-    router.replace('/login');
-    return null;
+    return (
+      <View className="flex-1 justify-center px-4 sm:px-6 bg-background dark:bg-dark-bg">
+        <Text className="text-xl text-center text-primary dark:text-dark-text">Please log in to continue</Text>
+        <Pressable 
+          className="bg-primary rounded-lg p-3 mt-4"
+          onPress={() => router.push('/login')}
+        >
+          <Text className="text-white text-center font-semibold">Go to Login</Text>
+        </Pressable>
+      </View>
+    );
   }
 
-  const handleUpload = () => {
-    addConversation({
-      id: `${conversations.length + 1}`,
-      title: `Conversation ${conversations.length + 1}`,
-      content: 'Sample content',
-      tagged: false,
-    });
+  const handleDocumentPick = async () => {
+    setUploading(true);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'text/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (result.assets && result.assets.length > 0 && !result.canceled) {
+        const asset = result.assets[0];
+        const response = await fetch(asset.uri);
+        const content = await response.text();
+        if (content.trim()) {
+          router.push({
+            pathname: '/edit',
+            params: { content: content.trim() },
+          });
+        } else {
+          Alert.alert('Error', 'The uploaded file is empty.');
+        }
+      } else {
+        Alert.alert('Upload Cancelled', 'No file was selected.');
+      }
+    } catch (error) {
+      Alert.alert('Upload Error', 'Failed to upload document.');
+      console.error(error);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <View className="flex-1 px-4 sm:px-6 py-10 bg-background dark:bg-dark-bg">
       <Text className="text-3xl font-bold text-center mb-6 text-primary dark:text-dark-text">Conversations</Text>
+      <ConversationForm />
       <Pressable
         className="bg-green-500 rounded-lg p-3 mb-4"
-        onPress={handleUpload}
+        onPress={handleDocumentPick}
+        disabled={uploading}
       >
-        <Text className="text-white text-center font-semibold">Upload Conversation</Text>
+        <Text className="text-white text-center font-semibold">
+          {uploading ? 'Uploading...' : 'Upload File'}
+        </Text>
       </Pressable>
       <FlatList
         data={conversations}
@@ -55,10 +93,16 @@ export default function HomeScreen() {
         ListEmptyComponent={<Text className="text-gray-500 text-center dark:text-gray-400">No conversations yet</Text>}
       />
       <Pressable
+        className="bg-secondary rounded-lg p-3 mt-4"
+        onPress={() => router.push('/settings')}
+      >
+        <Text className="text-white text-center font-semibold">Settings</Text>
+      </Pressable>
+      <Pressable
         className="bg-red-500 rounded-lg p-3 mt-4"
         onPress={() => {
           logout();
-          router.push('/login');
+          router.replace('/login');
         }}
       >
         <Text className="text-white text-center font-semibold">Logout</Text>
