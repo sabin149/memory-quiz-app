@@ -1,8 +1,24 @@
 # Memory Quiz App
 
-Remember what you learn. Save conversations — notes, AI chat transcripts, pasted text, or uploaded `.txt` files — tag the important ones, and get quizzed on them at your own interval (spaced repetition for your own content).
+Remember what you learn — spaced repetition for your own content.
 
-Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.expo.dev/router/introduction/), [NativeWind](https://www.nativewind.dev/), [Zustand](https://zustand.docs.pmnd.rs/), and [Appwrite](https://appwrite.io) as the backend.
+## The problem
+
+We learn constantly — from AI chats, articles, docs, courses — and forget most of it within days. That's the [forgetting curve](https://en.wikipedia.org/wiki/Forgetting_curve): without review, new knowledge decays fast. ChatGPT/Claude conversations are the worst offenders: you get a great explanation, close the tab, and a month later you're asking the same question again. Spaced-repetition apps like Anki solve retention, but they make *you* do the work of turning what you read into flashcards — which is exactly the step most people skip.
+
+## The solution
+
+Memory Quiz App closes that gap:
+
+1. **Capture** — save anything you want to keep: paste an AI chat transcript, type notes, or upload a `.txt` file. Each saved item is a "conversation".
+2. **Tag** — mark the conversations that matter so review effort goes where it counts.
+3. **Get quizzed** — the app turns your conversations into quiz questions and re-asks them on your schedule (interval + preferred time), so knowledge is refreshed right before you'd forget it.
+
+You don't write flashcards. You save what you learned, and the app fights the forgetting curve for you.
+
+## Tech stack
+
+Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.expo.dev/router/introduction/), [NativeWind](https://www.nativewind.dev/), [Zustand](https://zustand.docs.pmnd.rs/), and [Appwrite](https://appwrite.io) as the backend (auth, database, serverless functions).
 
 ## Getting started
 
@@ -67,10 +83,16 @@ utils/validation.ts  # Shared validation patterns
 - Account deactivation from Settings
 - Sessions restored on app launch; route groups guard authenticated screens
 
-## Roadmap
+## Status & roadmap
 
-- Conversation sync to Appwrite Databases
-- Real quiz generation from conversation content (LLM function + local fallback)
-- Spaced-repetition scheduling + local notifications
-- Admin analytics portal
-- Gamification (memory strength, streaks, XP)
+Delivered so far:
+
+- **Phase 1 — Foundation**: real Appwrite email/password auth with session restore, route-group auth guards, local persistence (conversations + settings survive restarts), quiz flow fixes, input validation, dead code removed.
+- **Phase 2 — Auth complete**: Google + GitHub OAuth (deep-link flow), password reset, email verification, account deactivation, safe user-facing error messages.
+
+Pending:
+
+- **Phase 3 — Real quizzes**: sync conversations to Appwrite Databases (per-user permissions); generate questions from conversation content (server-side LLM function + on-device fill-in-the-blank fallback); per-conversation quiz history; SM-2 spaced-repetition scheduling; local notifications honoring the interval/time settings.
+- **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); web `/admin` dashboard gated by an Appwrite "admins" team — active users, retention, quiz accuracy, per-user activity.
+- **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by correct answers), daily streaks, review heatmap, XP/levels, achievements, daily goal ring; shared component library, working dark mode, micro-interactions, onboarding.
+- **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review.
