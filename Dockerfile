@@ -4,7 +4,10 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit --no-fund
+# Cache mount keeps downloaded packages across builds, even when the lockfile
+# changes — only the delta is fetched.
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund
 
 # ---- dev: Expo dev server (use with docker-compose expo-tunnel/expo-dev) ----
 FROM deps AS dev
