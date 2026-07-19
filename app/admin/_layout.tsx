@@ -47,6 +47,7 @@ export default function AdminLayout() {
     >
       <Stack.Screen name="index" options={{ title: 'Admin — Dashboard' }} />
       <Stack.Screen name="users" options={{ title: 'Admin — Users' }} />
+      <Stack.Screen name="manage" options={{ title: 'Admin — Manage accounts' }} />
       <Stack.Screen name="user/[userId]" options={{ title: 'Admin — User activity' }} />
     </Stack>
   );

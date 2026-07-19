@@ -171,6 +171,13 @@ export default function AdminDashboardScreen() {
           onPress={() => router.push('/admin/users')}
         />
         <Button
+          title="Manage accounts"
+          icon="key-outline"
+          variant="secondary"
+          onPress={() => router.push('/admin/manage')}
+          className="mt-2"
+        />
+        <Button
           title={isRefetching ? 'Refreshing…' : 'Refresh'}
           icon="refresh-outline"
           variant="ghost"
