@@ -1,6 +1,8 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import Heatmap from '@/components/Heatmap';
+import AnimatedBar from '@/components/ui/AnimatedBar';
 import Card from '@/components/ui/Card';
 import { useQuizStore } from '@/store';
 import { ACHIEVEMENTS, computeStreak, levelFromXp } from '@/utils/gamification';
@@ -21,17 +23,20 @@ export default function StatsScreen() {
     >
       <View className="mb-4 flex-row">
         <Card className="mr-3 flex-1 items-center">
-          <Text className="text-3xl font-bold text-secondary">{streak}🔥</Text>
+          <Ionicons name="flame" size={26} color="#FF6F61" />
+          <Text className="text-2xl font-bold text-secondary">{streak}</Text>
           <Text className="text-xs text-gray-500 dark:text-gray-400">Day streak</Text>
         </Card>
         <Card className="mr-3 flex-1 items-center">
-          <Text className="text-3xl font-bold text-primary dark:text-dark-text">
+          <Ionicons name="ribbon" size={26} color="#4B5EAA" />
+          <Text className="text-2xl font-bold text-primary dark:text-dark-text">
             {level.level}
           </Text>
           <Text className="text-xs text-gray-500 dark:text-gray-400">Level</Text>
         </Card>
         <Card className="flex-1 items-center">
-          <Text className="text-3xl font-bold text-primary dark:text-dark-text">
+          <Ionicons name="star" size={26} color="#FFD166" />
+          <Text className="text-2xl font-bold text-primary dark:text-dark-text">
             {gamification.totalXp}
           </Text>
           <Text className="text-xs text-gray-500 dark:text-gray-400">Total XP</Text>
@@ -47,8 +52,8 @@ export default function StatsScreen() {
             {level.xpIntoLevel}/{level.xpForNextLevel} XP
           </Text>
         </View>
-        <View className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-          <View className="h-2 rounded-full bg-accent" style={{ width: `${level.progressPct}%` }} />
+        <View className="flex-row">
+          <AnimatedBar pct={level.progressPct} colorClass="bg-accent" />
         </View>
       </Card>
 
@@ -75,7 +80,11 @@ export default function StatsScreen() {
                   {achievement.description}
                 </Text>
               </View>
-              <Text className="text-xl">{unlocked ? '🏆' : '🔒'}</Text>
+              <Ionicons
+                name={unlocked ? 'trophy' : 'lock-closed-outline'}
+                size={22}
+                color={unlocked ? '#FFD166' : '#9CA3AF'}
+              />
             </View>
           </Card>
         );

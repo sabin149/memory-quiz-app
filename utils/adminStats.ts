@@ -15,6 +15,14 @@ export interface AttemptRecord {
   completedAt: string;
 }
 
+export interface DayActivity {
+  day: string;
+  events: number;
+  quizzes: number;
+  /** Average quiz score that day, null when no quizzes were taken. */
+  accuracyPct: number | null;
+}
+
 export interface DashboardStats {
   dau: number;
   wau: number;
@@ -22,7 +30,7 @@ export interface DashboardStats {
   quizzes7d: number;
   avgAccuracy7d: number | null;
   conversationsCreated7d: number;
-  activityByDay: { day: string; events: number; quizzes: number }[];
+  activityByDay: DayActivity[];
 }
 
 export interface UserSummary {
@@ -46,7 +54,8 @@ function dayKey(iso: string): string {
 export function computeDashboardStats(
   events: EventRecord[],
   attempts: AttemptRecord[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  chartDays: number = 7
 ): DashboardStats {
   const activeToday = new Set<string>();
   const activeWeek = new Set<string>();
@@ -70,14 +79,19 @@ export function computeDashboardStats(
         )
       : null;
 
-  // Last 7 calendar days, oldest first.
+  // Last N calendar days, oldest first.
   const activityByDay: DashboardStats['activityByDay'] = [];
-  for (let i = 6; i >= 0; i--) {
+  for (let i = chartDays - 1; i >= 0; i--) {
     const day = dayKey(new Date(now.getTime() - i * DAY_MS).toISOString());
+    const dayAttempts = attempts.filter((a) => dayKey(a.completedAt) === day);
     activityByDay.push({
       day,
       events: events.filter((e) => dayKey(e.createdAt) === day).length,
-      quizzes: attempts.filter((a) => dayKey(a.completedAt) === day).length,
+      quizzes: dayAttempts.length,
+      accuracyPct:
+        dayAttempts.length > 0
+          ? Math.round(dayAttempts.reduce((s, a) => s + a.scorePct, 0) / dayAttempts.length)
+          : null,
     });
   }
 
@@ -90,6 +104,19 @@ export function computeDashboardStats(
     conversationsCreated7d,
     activityByDay,
   };
+}
+
+/** Event counts by type, most frequent first. */
+export function computeEventBreakdown(
+  events: EventRecord[]
+): { name: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    counts.set(event.name, (counts.get(event.name) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 }
 
 export function computeUserSummaries(

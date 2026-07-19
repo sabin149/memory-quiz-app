@@ -1,54 +1,48 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import OAuthButtons from '@/components/OAuthButtons';
+import Button from '@/components/ui/Button';
+import { PasswordField, TextField } from '@/components/ui/TextField';
 import { trackEvent } from '@/services/analytics';
-import { register, sendVerificationEmail, toAuthErrorMessage } from '@/services/auth';
+import { register, sendVerificationEmail, toAuthFieldError } from '@/services/auth';
 import { useQuizStore } from '@/store';
-import { EMAIL_PATTERN } from '@/utils/validation';
-
-type FormData = {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-};
+import { RegisterForm, registerSchema } from '@/utils/validation';
 
 export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
-    watch,
+    setError,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<RegisterForm>({
+    resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
   });
   const setUser = useQuizStore((s) => s.setUser);
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const password = watch('password');
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: RegisterForm) => {
     setSubmitting(true);
     try {
-      const user = await register(data.name.trim(), data.email.trim(), data.password);
+      const user = await register(data.name, data.email, data.password);
       trackEvent(user.$id, 'register');
       // Best effort; the user can resend from Settings if delivery fails.
       sendVerificationEmail().catch(() => {});
       setUser(user);
       router.replace('/home');
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Registration failed', text2: toAuthErrorMessage(error) });
+      const { field, message } = toAuthFieldError(error);
+      if (field) {
+        setError(field, { message });
+      } else {
+        Toast.show({ type: 'error', text1: 'Registration failed', text2: message });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -63,119 +57,98 @@ export default function RegisterScreen() {
         contentContainerClassName="flex-grow justify-center px-6"
         keyboardShouldPersistTaps="handled"
       >
-        <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-          Create account
-        </Text>
-        <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
-          Save what you learn. Never forget it.
-        </Text>
-        <Controller
-          control={control}
-          name="name"
-          rules={{ required: 'Name is required' }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Name"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              autoComplete="name"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.name?.message ?? ' '}</Text>
-        <Controller
-          control={control}
-          name="email"
-          rules={{
-            required: 'Email is required',
-            pattern: { value: EMAIL_PATTERN, message: 'Enter a valid email address' },
-          }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Email"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.email?.message ?? ' '}</Text>
-        <Controller
-          control={control}
-          name="password"
-          rules={{
-            required: 'Password is required',
-            minLength: { value: 8, message: 'Password must be at least 8 characters' },
-          }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Password (min. 8 characters)"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              secureTextEntry
-              autoComplete="new-password"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.password?.message ?? ' '}</Text>
-        <Controller
-          control={control}
-          name="confirmPassword"
-          rules={{
-            required: 'Confirm password is required',
-            validate: (value) => value === password || 'Passwords do not match',
-          }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Confirm Password"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              secureTextEntry
-              autoComplete="new-password"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.confirmPassword?.message ?? ' '}</Text>
-        <Pressable
-          className={`mb-4 rounded-lg p-3 ${submitting ? 'bg-primary/60' : 'bg-primary'}`}
-          onPress={handleSubmit(onSubmit)}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-center font-semibold text-white">Register</Text>
-          )}
-        </Pressable>
-        <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
-        <Pressable onPress={() => router.push('/login')} disabled={submitting}>
-          <Text className="text-center text-secondary dark:text-accent">
-            Already have an account? Login
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
+            Create account
           </Text>
-        </Pressable>
-        <Pressable className="mt-4" onPress={() => router.push('/privacy')} disabled={submitting}>
-          <Text className="text-center text-xs text-gray-500 underline dark:text-gray-400">
-            By creating an account you agree to our privacy policy
+          <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
+            Save what you learn. Never forget it.
           </Text>
-        </Pressable>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextField
+                placeholder="Name"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.name?.message}
+                autoComplete="name"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextField
+                placeholder="Email"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <PasswordField
+                placeholder="Password (min. 8 characters)"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+                autoComplete="new-password"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <PasswordField
+                placeholder="Confirm Password"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.confirmPassword?.message}
+                autoComplete="new-password"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Button
+            title="Register"
+            icon="person-add-outline"
+            onPress={handleSubmit(onSubmit)}
+            loading={submitting}
+            className="mb-4"
+          />
+          <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
+          <Pressable onPress={() => router.push('/login')} disabled={submitting}>
+            <Text className="text-center text-secondary dark:text-accent">
+              Already have an account? Login
+            </Text>
+          </Pressable>
+          <Pressable
+            className="mt-4"
+            onPress={() => router.push('/privacy')}
+            disabled={submitting}
+          >
+            <Text className="text-center text-xs text-gray-500 underline dark:text-gray-400">
+              By creating an account you agree to our privacy policy
+            </Text>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -1,7 +1,9 @@
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { generateQuiz } from '@/services/quiz';
 import { useQuizStore } from '@/store';
 import { xpForQuiz } from '@/utils/gamification';
@@ -92,7 +94,14 @@ export default function QuizScreen() {
       : null;
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
-        <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
+        <Animated.View entering={FadeInDown.duration(400)} className="items-center">
+          <Ionicons
+            name={correct === total ? 'trophy' : correct / total >= 0.6 ? 'ribbon' : 'refresh-circle'}
+            size={56}
+            color={correct === total ? '#FFD166' : '#4B5EAA'}
+          />
+        </Animated.View>
+        <Text className="mb-2 mt-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
           Quiz complete
         </Text>
         <Text className="mb-2 text-center text-lg text-black dark:text-dark-text">
@@ -133,22 +142,30 @@ export default function QuizScreen() {
       <Text className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Question {quiz.currentQuestion + 1} of {quiz.questions.length}
       </Text>
-      <Text className="mb-4 text-lg text-black dark:text-dark-text">{question.question}</Text>
-      {question.options.map((option, index) => (
-        <Pressable
-          key={index}
-          className={`mb-2 rounded-lg p-3 ${optionStyle(index)}`}
-          onPress={() => {
-            answerFeedback(index === question.correct);
-            answerQuestion(index);
-          }}
-          disabled={answered}
-        >
-          <Text className="text-center text-white">{option}</Text>
-        </Pressable>
-      ))}
+      <Animated.View key={quiz.currentQuestion} entering={FadeInRight.duration(300)}>
+        <Text className="mb-4 text-lg text-black dark:text-dark-text">{question.question}</Text>
+        {question.options.map((option, index) => (
+          <Pressable
+            key={index}
+            className={`mb-2 flex-row items-center justify-center rounded-lg p-3 ${optionStyle(index)} active:opacity-80`}
+            onPress={() => {
+              answerFeedback(index === question.correct);
+              answerQuestion(index);
+            }}
+            disabled={answered}
+          >
+            {answered && index === question.correct && (
+              <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
+            )}
+            {answered && index === selected && index !== question.correct && (
+              <Ionicons name="close-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
+            )}
+            <Text className="text-center text-white">{option}</Text>
+          </Pressable>
+        ))}
+      </Animated.View>
       {answered && (
-        <>
+        <Animated.View entering={FadeInDown.duration(250)}>
           <Text
             className={`mt-4 text-center ${
               selected === question.correct ? 'text-green-600' : 'text-red-500'
@@ -158,12 +175,16 @@ export default function QuizScreen() {
               ? 'Correct!'
               : `Correct answer: ${question.options[question.correct]}`}
           </Text>
-          <Pressable className="mt-4 rounded-lg bg-blue-500 p-3" onPress={nextQuestion}>
+          <Pressable
+            className="mt-4 flex-row items-center justify-center rounded-lg bg-blue-500 p-3 active:opacity-80"
+            onPress={nextQuestion}
+          >
             <Text className="text-center font-semibold text-white">
               {quiz.currentQuestion < quiz.questions.length - 1 ? 'Next' : 'Finish'}
             </Text>
+            <Ionicons name="arrow-forward" size={16} color="#fff" style={{ marginLeft: 6 }} />
           </Pressable>
-        </>
+        </Animated.View>
       )}
       <Text className="mt-4 text-center text-lg text-black dark:text-dark-text">
         Score: {quiz.score}
