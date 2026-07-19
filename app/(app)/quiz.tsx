@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import Button from '@/components/ui/Button';
@@ -53,6 +53,16 @@ export default function QuizScreen() {
   const [explaining, setExplaining] = useState(false);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const recordedRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
+
+  // A long explanation can push the confidence chips and Next button below
+  // the fold; keep them reachable by following the new content.
+  const currentExplanation = explanations[quiz.currentQuestion];
+  useEffect(() => {
+    if (currentExplanation) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  }, [currentExplanation]);
 
   const conversation = conversations.find((c) => c.id === params.conversationId);
   const sourceTitle =
@@ -208,7 +218,12 @@ export default function QuizScreen() {
   };
 
   return (
-    <View className="flex-1 bg-background px-4 py-8 dark:bg-dark-bg sm:px-6">
+    <ScrollView
+      ref={scrollRef}
+      className="flex-1 bg-background dark:bg-dark-bg"
+      contentContainerClassName="px-4 py-8 sm:px-6"
+      keyboardShouldPersistTaps="handled"
+    >
       <Text className="mb-1 text-center text-sm text-gray-500 dark:text-gray-400" numberOfLines={1}>
         {sourceTitle}
       </Text>
@@ -343,6 +358,6 @@ export default function QuizScreen() {
       <Text className="mt-4 text-center text-lg text-black dark:text-dark-text">
         {t('quiz.score', { score: quiz.score })}
       </Text>
-    </View>
+    </ScrollView>
   );
 }
