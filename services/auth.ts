@@ -1,7 +1,19 @@
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
+import { Platform } from 'react-native';
 import { AppwriteException, ID, Models, OAuthProvider } from 'react-native-appwrite';
 import { account, appwriteCallbackScheme } from '@/lib/appwrite';
+
+/**
+ * Where emailed links (recovery/verification) should send the user. On web
+ * that must be a URL on this site; on native it's the app's deep-link scheme.
+ */
+function emailRedirectUrl(path: string): string {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return `${window.location.origin}/${path}`;
+  }
+  return `${appwriteCallbackScheme}://${path}`;
+}
 
 export type User = Models.User<Models.Preferences>;
 
@@ -140,7 +152,7 @@ export function saveGamificationPrefs(gamification: object): void {
 
 /** Emails a password-reset link that deep-links back into the app. */
 export async function requestPasswordReset(email: string): Promise<void> {
-  await account.createRecovery(email, `${appwriteCallbackScheme}://reset-password`);
+  await account.createRecovery(email, emailRedirectUrl('reset-password'));
 }
 
 /** Completes a reset started from the emailed link. */
@@ -154,7 +166,7 @@ export async function completePasswordReset(
 
 /** Emails a verification link to the logged-in user's address. */
 export async function sendVerificationEmail(): Promise<void> {
-  await account.createVerification(`${appwriteCallbackScheme}://verify-email`);
+  await account.createVerification(emailRedirectUrl('verify-email'));
 }
 
 /** Confirms the address using the userId/secret from the emailed link. */
