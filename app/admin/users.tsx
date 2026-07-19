@@ -1,16 +1,27 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { fetchAttemptsSince } from '@/services/admin';
 import { fetchEventsSince } from '@/services/analytics';
 import { computeUserSummaries, UserSummary } from '@/utils/adminStats';
 
 const WINDOW_DAYS = 30;
+const PAGE = 25;
 
 export default function AdminUsersScreen() {
   const router = useRouter();
   const [users, setUsers] = useState<UserSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(PAGE);
+
+  const visible = useMemo(() => {
+    if (!users) return null;
+    const q = query.trim().toLowerCase();
+    const filtered = q ? users.filter((u) => u.ownerId.toLowerCase().includes(q)) : users;
+    return { items: filtered.slice(0, limit), total: filtered.length };
+  }, [users, query, limit]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -65,9 +76,37 @@ export default function AdminUsersScreen() {
         Last {WINDOW_DAYS} days · {users.length} active user{users.length === 1 ? '' : 's'} ·
         identified by user id only
       </Text>
+      <View className="mb-3 flex-row items-center rounded-lg border border-gray-300 bg-white px-3 dark:border-gray-600 dark:bg-gray-800">
+        <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+        <TextInput
+          className="flex-1 p-2.5 text-black dark:text-white"
+          placeholder="Filter by user id"
+          placeholderTextColor="#9CA3AF"
+          value={query}
+          onChangeText={(t) => {
+            setQuery(t);
+            setLimit(PAGE);
+          }}
+          autoCapitalize="none"
+          accessibilityLabel="Filter users by id"
+        />
+      </View>
       <FlatList
-        data={users}
+        data={visible?.items ?? []}
         keyExtractor={(item) => item.ownerId}
+        ListFooterComponent={
+          visible && visible.total > visible.items.length ? (
+            <Pressable
+              className="mt-2 rounded-lg bg-primary p-3 active:opacity-80"
+              onPress={() => setLimit((l) => l + PAGE)}
+              accessibilityRole="button"
+            >
+              <Text className="text-center font-semibold text-white">
+                Show more ({visible.items.length} of {visible.total})
+              </Text>
+            </Pressable>
+          ) : null
+        }
         renderItem={({ item }) => (
           <Pressable
             className="mb-2 rounded-lg bg-white p-4 shadow dark:bg-gray-800"

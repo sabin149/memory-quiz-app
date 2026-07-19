@@ -4,7 +4,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
-import { generateQuiz } from '@/services/quiz';
+import Button from '@/components/ui/Button';
+import { Difficulty, generateQuiz } from '@/services/quiz';
 import { useQuizStore } from '@/store';
 import { xpForQuiz } from '@/utils/gamification';
 
@@ -16,35 +17,59 @@ function answerFeedback(correct: boolean) {
 }
 
 export default function QuizScreen() {
-  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const params = useLocalSearchParams<{
+    conversationId?: string;
+    topic?: string;
+    url?: string;
+    difficulty?: Difficulty;
+    count?: string;
+  }>();
   const { quiz, conversations, startQuiz, answerQuestion, nextQuestion, resetQuiz, applyQuizResult } =
     useQuizStore();
   const router = useRouter();
   const [generating, setGenerating] = useState(true);
-  const [noContent, setNoContent] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const recordedRef = useRef(false);
 
-  const conversation = conversations.find((c) => c.id === conversationId);
+  const conversation = conversations.find((c) => c.id === params.conversationId);
+  const sourceTitle =
+    conversation?.title ??
+    (params.topic ? `Topic: ${params.topic}` : params.url ? params.url : 'Quiz');
 
   const beginQuiz = useCallback(async () => {
-    const target = useQuizStore
-      .getState()
-      .conversations.find((c) => c.id === conversationId);
-    if (!target) {
-      setGenerating(false);
-      return;
-    }
     setGenerating(true);
-    setNoContent(false);
+    setGenError(null);
     recordedRef.current = false;
-    const questions = await generateQuiz(target);
-    if (questions.length === 0) {
-      setNoContent(true);
-    } else {
-      startQuiz(target.id, questions);
+    try {
+      const target = params.conversationId
+        ? useQuizStore.getState().conversations.find((c) => c.id === params.conversationId)
+        : undefined;
+      if (params.conversationId && !target) {
+        setGenError('Conversation not found.');
+        return;
+      }
+      const questions = await generateQuiz({
+        content: target?.content,
+        topic: params.topic || undefined,
+        url: params.url || undefined,
+        difficulty: params.difficulty ?? 'medium',
+        count: Number(params.count) || 5,
+      });
+      if (questions.length === 0) {
+        setGenError(
+          target
+            ? 'Not enough content to build a quiz. Add a few full sentences to this conversation.'
+            : 'Could not generate questions from that source. Try different input.'
+        );
+        return;
+      }
+      startQuiz(target?.id ?? null, questions);
+    } catch (error) {
+      setGenError(error instanceof Error ? error.message : 'Quiz generation failed.');
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
-  }, [conversationId, startQuiz]);
+  }, [params.conversationId, params.topic, params.url, params.difficulty, params.count, startQuiz]);
 
   useEffect(() => {
     beginQuiz();
@@ -53,33 +78,32 @@ export default function QuizScreen() {
 
   // Record the result exactly once when the quiz finishes.
   useEffect(() => {
-    if (quiz.status === 'finished' && quiz.conversationId && !recordedRef.current) {
+    if (quiz.status === 'finished' && !recordedRef.current) {
       recordedRef.current = true;
       const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
       applyQuizResult(quiz.conversationId, correct, quiz.questions.length);
     }
   }, [quiz, applyQuizResult]);
 
-  if (!conversation || noContent || generating || quiz.status === 'idle') {
+  if (generating || genError || quiz.status === 'idle') {
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
-        {generating && conversation ? (
+        {generating ? (
           <>
             <ActivityIndicator />
             <Text className="mt-4 text-center text-lg text-gray-500 dark:text-gray-400">
-              Building your quiz from “{conversation.title}”…
+              Building your quiz from “{sourceTitle}”…
             </Text>
           </>
         ) : (
           <>
+            <View className="mb-3 items-center">
+              <Ionicons name="alert-circle-outline" size={40} color="#9CA3AF" />
+            </View>
             <Text className="text-center text-lg text-gray-500 dark:text-gray-400">
-              {conversation
-                ? 'Not enough content to build a quiz. Add a few full sentences to this conversation.'
-                : 'Conversation not found.'}
+              {genError}
             </Text>
-            <Pressable className="mt-4 rounded-lg bg-primary p-3" onPress={() => router.back()}>
-              <Text className="text-center font-semibold text-white">Go back</Text>
-            </Pressable>
+            <Button title="Go back" onPress={() => router.back()} className="mt-4" />
           </>
         )}
       </View>
@@ -89,7 +113,7 @@ export default function QuizScreen() {
   if (quiz.status === 'finished') {
     const total = quiz.questions.length;
     const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
-    const nextReview = conversation.memory.nextReviewAt
+    const nextReview = conversation?.memory.nextReviewAt
       ? new Date(conversation.memory.nextReviewAt).toLocaleDateString()
       : null;
     return (
@@ -113,12 +137,13 @@ export default function QuizScreen() {
             Next review scheduled for {nextReview}
           </Text>
         )}
-        <Pressable className="mb-3 rounded-lg bg-primary p-3" onPress={beginQuiz}>
-          <Text className="text-center font-semibold text-white">Try again</Text>
-        </Pressable>
-        <Pressable className="rounded-lg bg-secondary p-3" onPress={() => router.back()}>
-          <Text className="text-center font-semibold text-white">Back to conversations</Text>
-        </Pressable>
+        <Button title="Try again" icon="refresh-outline" onPress={beginQuiz} className="mb-3" />
+        <Button
+          title="Done"
+          icon="checkmark-outline"
+          variant="secondary"
+          onPress={() => router.back()}
+        />
       </View>
     );
   }
@@ -136,8 +161,8 @@ export default function QuizScreen() {
 
   return (
     <View className="flex-1 bg-background px-4 py-8 dark:bg-dark-bg sm:px-6">
-      <Text className="mb-1 text-center text-sm text-gray-500 dark:text-gray-400">
-        {conversation.title}
+      <Text className="mb-1 text-center text-sm text-gray-500 dark:text-gray-400" numberOfLines={1}>
+        {sourceTitle}
       </Text>
       <Text className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Question {quiz.currentQuestion + 1} of {quiz.questions.length}
@@ -153,6 +178,8 @@ export default function QuizScreen() {
               answerQuestion(index);
             }}
             disabled={answered}
+            accessibilityRole="button"
+            accessibilityLabel={`Answer: ${option}`}
           >
             {answered && index === question.correct && (
               <Ionicons name="checkmark-circle" size={18} color="#fff" style={{ marginRight: 6 }} />
@@ -178,6 +205,7 @@ export default function QuizScreen() {
           <Pressable
             className="mt-4 flex-row items-center justify-center rounded-lg bg-blue-500 p-3 active:opacity-80"
             onPress={nextQuestion}
+            accessibilityRole="button"
           >
             <Text className="text-center font-semibold text-white">
               {quiz.currentQuestion < quiz.questions.length - 1 ? 'Next' : 'Finish'}

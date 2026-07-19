@@ -86,9 +86,19 @@ export function toAuthFieldError(error: unknown): {
   return { field: null, message };
 }
 
-export async function register(name: string, email: string, password: string): Promise<User> {
+export async function register(
+  name: string,
+  email: string,
+  password: string,
+  phone?: string
+): Promise<User> {
   await account.create(ID.unique(), email, password, name);
-  return login(email, password);
+  const user = await login(email, password);
+  if (phone) {
+    // Stored in prefs: account.updatePhone() would demand SMS verification.
+    account.updatePrefs({ ...user.prefs, phone }).catch(() => {});
+  }
+  return user;
 }
 
 export async function login(email: string, password: string): Promise<User> {

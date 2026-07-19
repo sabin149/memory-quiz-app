@@ -2,11 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import OAuthButtons from '@/components/OAuthButtons';
 import Button from '@/components/ui/Button';
+import CountryCodePicker, { COUNTRIES, Country } from '@/components/ui/CountryCodePicker';
 import { PasswordField, TextField } from '@/components/ui/TextField';
 import { trackEvent } from '@/services/analytics';
 import { register, sendVerificationEmail, toAuthFieldError } from '@/services/auth';
@@ -21,21 +22,34 @@ export default function RegisterScreen() {
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+    },
   });
   const setUser = useQuizStore((s) => s.setUser);
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [country, setCountry] = useState<Country>(COUNTRIES[0]);
 
   const onSubmit = async (data: RegisterForm) => {
     setSubmitting(true);
     try {
-      const user = await register(data.name, data.email, data.password);
+      const user = await register(
+        `${data.firstName} ${data.lastName}`,
+        data.email,
+        data.password,
+        `${country.dial}${data.phone}`
+      );
       trackEvent(user.$id, 'register');
-      // Best effort; the user can resend from Settings if delivery fails.
+      // Best effort; the user can resend from the verification screen.
       sendVerificationEmail().catch(() => {});
       setUser(user);
-      router.replace('/home');
+      router.replace('/verify-pending');
     } catch (error) {
       const { field, message } = toAuthFieldError(error);
       if (field) {
@@ -54,7 +68,7 @@ export default function RegisterScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerClassName="flex-grow justify-center px-6"
+        contentContainerClassName="flex-grow justify-center px-6 py-10"
         keyboardShouldPersistTaps="handled"
       >
         <Animated.View entering={FadeInDown.duration(400)}>
@@ -64,21 +78,63 @@ export default function RegisterScreen() {
           <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
             Save what you learn. Never forget it.
           </Text>
-          <Controller
-            control={control}
-            name="name"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextField
-                placeholder="Name"
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
-                error={errors.name?.message}
-                autoComplete="name"
-                editable={!submitting}
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="firstName"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    placeholder="First name"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.firstName?.message}
+                    autoComplete="given-name"
+                    editable={!submitting}
+                  />
+                )}
               />
-            )}
-          />
+            </View>
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="lastName"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    placeholder="Last name"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.lastName?.message}
+                    autoComplete="family-name"
+                    editable={!submitting}
+                  />
+                )}
+              />
+            </View>
+          </View>
+          <View className="flex-row">
+            <CountryCodePicker value={country} onChange={setCountry} disabled={submitting} />
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="phone"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TextField
+                    placeholder="Phone number"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    error={errors.phone?.message}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    editable={!submitting}
+                  />
+                )}
+              />
+            </View>
+          </View>
           <Controller
             control={control}
             name="email"
