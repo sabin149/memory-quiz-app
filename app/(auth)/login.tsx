@@ -1,48 +1,46 @@
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import OAuthButtons from '@/components/OAuthButtons';
+import Button from '@/components/ui/Button';
+import { PasswordField, TextField } from '@/components/ui/TextField';
 import { trackEvent } from '@/services/analytics';
-import { login, toAuthErrorMessage } from '@/services/auth';
+import { login, toAuthFieldError } from '@/services/auth';
 import { useQuizStore } from '@/store';
-import { EMAIL_PATTERN } from '@/utils/validation';
-
-type FormData = {
-  email: string;
-  password: string;
-};
+import { LoginForm, loginSchema } from '@/utils/validation';
 
 export default function LoginScreen() {
   const {
     control,
     handleSubmit,
+    setError,
     formState: { errors },
-  } = useForm<FormData>({
+  } = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
   const setUser = useQuizStore((s) => s.setUser);
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: LoginForm) => {
     setSubmitting(true);
     try {
-      const user = await login(data.email.trim(), data.password);
+      const user = await login(data.email, data.password);
       trackEvent(user.$id, 'login');
       setUser(user);
       router.replace('/home');
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Login failed', text2: toAuthErrorMessage(error) });
+      const { field, message } = toAuthFieldError(error);
+      if (field) {
+        setError(field, { message });
+      } else {
+        Toast.show({ type: 'error', text1: 'Login failed', text2: message });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -57,78 +55,66 @@ export default function LoginScreen() {
         contentContainerClassName="flex-grow justify-center px-6"
         keyboardShouldPersistTaps="handled"
       >
-        <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-          Welcome back
-        </Text>
-        <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
-          Log in to keep your memory sharp
-        </Text>
-        <Controller
-          control={control}
-          name="email"
-          rules={{
-            required: 'Email is required',
-            pattern: { value: EMAIL_PATTERN, message: 'Enter a valid email address' },
-          }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Email"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.email?.message ?? ' '}</Text>
-        <Controller
-          control={control}
-          name="password"
-          rules={{ required: 'Password is required' }}
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              className="mb-1 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-              placeholder="Password"
-              placeholderTextColor="#9CA3AF"
-              onBlur={onBlur}
-              onChangeText={onChange}
-              value={value}
-              secureTextEntry
-              autoComplete="password"
-              editable={!submitting}
-            />
-          )}
-        />
-        <Text className="mb-3 text-red-500">{errors.password?.message ?? ' '}</Text>
-        <Pressable
-          className={`mb-4 rounded-lg p-3 ${submitting ? 'bg-primary/60' : 'bg-primary'}`}
-          onPress={handleSubmit(onSubmit)}
-          disabled={submitting}
-        >
-          {submitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-center font-semibold text-white">Login</Text>
-          )}
-        </Pressable>
-        <Pressable
-          className="mb-4"
-          onPress={() => router.push('/forgot-password')}
-          disabled={submitting}
-        >
-          <Text className="text-center text-secondary dark:text-accent">Forgot password?</Text>
-        </Pressable>
-        <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
-        <Pressable onPress={() => router.push('/register')} disabled={submitting}>
-          <Text className="text-center text-secondary dark:text-accent">
-            Don&apos;t have an account? Register
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
+            Welcome back
           </Text>
-        </Pressable>
+          <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
+            Log in to keep your memory sharp
+          </Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextField
+                placeholder="Email"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.email?.message}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <PasswordField
+                placeholder="Password"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                error={errors.password?.message}
+                autoComplete="password"
+                editable={!submitting}
+              />
+            )}
+          />
+          <Button
+            title="Login"
+            icon="log-in-outline"
+            onPress={handleSubmit(onSubmit)}
+            loading={submitting}
+            className="mb-4"
+          />
+          <Pressable
+            className="mb-4"
+            onPress={() => router.push('/forgot-password')}
+            disabled={submitting}
+          >
+            <Text className="text-center text-secondary dark:text-accent">Forgot password?</Text>
+          </Pressable>
+          <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
+          <Pressable onPress={() => router.push('/register')} disabled={submitting}>
+            <Text className="text-center text-secondary dark:text-accent">
+              Don&apos;t have an account? Register
+            </Text>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

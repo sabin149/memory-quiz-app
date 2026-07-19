@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -10,10 +11,14 @@ import {
 import { ThemePreference, useQuizStore } from '@/store';
 import { isValidIntervalDays, TIME_PATTERN } from '@/utils/validation';
 
-const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+const THEME_OPTIONS: {
+  value: ThemePreference;
+  label: string;
+  icon: 'phone-portrait-outline' | 'sunny-outline' | 'moon-outline';
+}[] = [
+  { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
+  { value: 'light', label: 'Light', icon: 'sunny-outline' },
+  { value: 'dark', label: 'Dark', icon: 'moon-outline' },
 ];
 
 export default function SettingsScreen() {
@@ -112,12 +117,18 @@ export default function SettingsScreen() {
 
       <Text className="mb-1 text-black dark:text-dark-text">Appearance</Text>
       <View className="mb-4 flex-row overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-        {THEME_OPTIONS.map(({ value, label }) => (
+        {THEME_OPTIONS.map(({ value, label, icon }) => (
           <Pressable
             key={value}
-            className={`flex-1 p-3 ${theme === value ? 'bg-primary' : 'bg-white dark:bg-gray-800'}`}
+            className={`flex-1 flex-row items-center justify-center p-3 ${theme === value ? 'bg-primary' : 'bg-white dark:bg-gray-800'}`}
             onPress={() => setTheme(value)}
           >
+            <Ionicons
+              name={icon}
+              size={16}
+              color={theme === value ? '#fff' : '#9CA3AF'}
+              style={{ marginRight: 6 }}
+            />
             <Text
               className={`text-center ${
                 theme === value ? 'font-semibold text-white' : 'text-black dark:text-dark-text'

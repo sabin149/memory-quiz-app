@@ -50,6 +50,30 @@ export function toAuthErrorMessage(error: unknown): string {
   return 'Network error. Check your connection and try again.';
 }
 
+/**
+ * Routes an auth error to the form field it belongs to (for inline display)
+ * or to none (generic toast). Message is always user-safe.
+ */
+export function toAuthFieldError(error: unknown): {
+  field: 'email' | 'password' | null;
+  message: string;
+} {
+  const message = toAuthErrorMessage(error);
+  if (error instanceof AppwriteException) {
+    switch (error.type) {
+      case 'user_already_exists':
+      case 'user_email_already_exists':
+      case 'user_not_found':
+        return { field: 'email', message };
+      case 'user_invalid_credentials':
+      case 'user_password_mismatch':
+      case 'user_password_recently_used':
+        return { field: 'password', message };
+    }
+  }
+  return { field: null, message };
+}
+
 export async function register(name: string, email: string, password: string): Promise<User> {
   await account.create(ID.unique(), email, password, name);
   return login(email, password);
