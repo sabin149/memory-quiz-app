@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -15,6 +16,7 @@ import { useQuizStore } from '@/store';
 import { RegisterForm, registerSchema } from '@/utils/validation';
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const {
     control,
     handleSubmit,
@@ -73,10 +75,10 @@ export default function RegisterScreen() {
       >
         <Animated.View entering={FadeInDown.duration(400)}>
           <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-            Create account
+            {t('auth.createAccount')}
           </Text>
           <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
-            Save what you learn. Never forget it.
+            {t('auth.registerSubtitle')}
           </Text>
           <View className="flex-row gap-3">
             <View className="flex-1">
@@ -85,7 +87,7 @@ export default function RegisterScreen() {
                 name="firstName"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextField
-                    placeholder="First name"
+                    placeholder={t('auth.firstName')}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -102,7 +104,7 @@ export default function RegisterScreen() {
                 name="lastName"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextField
-                    placeholder="Last name"
+                    placeholder={t('auth.lastName')}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -122,7 +124,7 @@ export default function RegisterScreen() {
                 name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <TextField
-                    placeholder="Phone number"
+                    placeholder={t('auth.phone')}
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
@@ -140,7 +142,7 @@ export default function RegisterScreen() {
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextField
-                placeholder="Email"
+                placeholder={t('auth.email')}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -157,7 +159,7 @@ export default function RegisterScreen() {
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
               <PasswordField
-                placeholder="Password (min. 8 characters)"
+                placeholder={t('auth.passwordMin')}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -172,7 +174,7 @@ export default function RegisterScreen() {
             name="confirmPassword"
             render={({ field: { onChange, onBlur, value } }) => (
               <PasswordField
-                placeholder="Confirm Password"
+                placeholder={t('auth.confirmPassword')}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -183,7 +185,7 @@ export default function RegisterScreen() {
             )}
           />
           <Button
-            title="Register"
+            title={t('auth.register')}
             icon="person-add-outline"
             onPress={handleSubmit(onSubmit)}
             loading={submitting}
@@ -192,7 +194,7 @@ export default function RegisterScreen() {
           <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
           <Pressable onPress={() => router.push('/login')} disabled={submitting}>
             <Text className="text-center text-secondary dark:text-accent">
-              Already have an account? Login
+              {t('auth.haveAccount')}
             </Text>
           </Pressable>
           <Pressable
@@ -201,7 +203,7 @@ export default function RegisterScreen() {
             disabled={submitting}
           >
             <Text className="text-center text-xs text-gray-500 underline dark:text-gray-400">
-              By creating an account you agree to our privacy policy
+              {t('auth.privacyAgreement')}
             </Text>
           </Pressable>
         </Animated.View>

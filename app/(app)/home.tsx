@@ -3,6 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import StrengthBar from '@/components/StrengthBar';
@@ -10,9 +11,31 @@ import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import { useQuizStore } from '@/store';
 import { computeStreak, levelFromXp } from '@/utils/gamification';
+import { memoryStrength } from '@/utils/memoryStrength';
 import { isDue } from '@/utils/sm2';
 
+/** Urgency-aware due badge: the lower the remaining strength, the louder. */
+function DueBadge({ strength, fadingLabel, dueLabel }: { strength: number; fadingLabel: string; dueLabel: string }) {
+  const fading = strength <= 25;
+  return (
+    <View
+      className={`rounded-full px-2 py-1 ${
+        fading ? 'bg-red-100 dark:bg-red-500/20' : 'bg-orange-100 dark:bg-orange-500/20'
+      }`}
+    >
+      <Text
+        className={`text-xs font-semibold ${
+          fading ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'
+        }`}
+      >
+        {fading ? fadingLabel : dueLabel}
+      </Text>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { conversations, remoteAvailable, gamification } = useQuizStore();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
@@ -42,12 +65,12 @@ export default function HomeScreen() {
       const asset = result.assets[0];
       const content = (await FileSystem.readAsStringAsync(asset.uri)).trim();
       if (!content) {
-        Alert.alert('Empty file', 'The selected file has no text content.');
+        Alert.alert(t('home.emptyFile'), t('home.emptyFileBody'));
         return;
       }
       router.push({ pathname: '/edit', params: { fileUri: asset.uri, fileName: asset.name } });
     } catch (error) {
-      Alert.alert('Upload failed', 'Could not read the selected file.');
+      Alert.alert(t('home.uploadFailed'), t('home.uploadFailedBody'));
       console.error('Document pick failed', error);
     } finally {
       setUploading(false);
@@ -60,7 +83,7 @@ export default function HomeScreen() {
         <View className="mb-2 flex-row items-center justify-center">
           <Ionicons name="cloud-offline-outline" size={14} color="#9CA3AF" />
           <Text className="ml-1 text-center text-xs text-gray-500 dark:text-gray-400">
-            Offline — changes sync when the backend is reachable.
+            {t('common.offlineBanner')}
           </Text>
         </View>
       )}
@@ -81,7 +104,7 @@ export default function HomeScreen() {
           </View>
           {dueCount > 0 && (
             <View className="rounded-full bg-secondary/10 px-3 py-1">
-              <Text className="text-xs font-semibold text-secondary">{dueCount} due</Text>
+              <Text className="text-xs font-semibold text-secondary">{t('home.dueCount', { count: dueCount })}</Text>
             </View>
           )}
         </Card>
@@ -92,11 +115,11 @@ export default function HomeScreen() {
           <Ionicons name="search-outline" size={18} color="#9CA3AF" />
           <TextInput
             className="flex-1 p-2.5 text-black dark:text-white"
-            placeholder="Search conversations"
+            placeholder={t('home.search')}
             placeholderTextColor="#9CA3AF"
             value={query}
             onChangeText={setQuery}
-            accessibilityLabel="Search conversations"
+            accessibilityLabel={t('home.search')}
           />
         </View>
         <Pressable
@@ -140,15 +163,15 @@ export default function HomeScreen() {
                     </Text>
                     <Text className="mt-0.5 text-xs text-gray-500 dark:text-gray-400" numberOfLines={1}>
                       {new Date(item.createdAt).toLocaleDateString()} ·{' '}
-                      {item.content.split(/\s+/).length} words
-                      {item.tagged ? ' · tagged' : ''}
+                      {t('home.words', { count: item.content.split(/\s+/).length })}
+                      {item.tagged ? ` · ${t('home.tagged')}` : ''}
                     </Text>
                   </View>
-                  {isDue(item.memory) ? (
-                    <View className="rounded-full bg-orange-100 px-2 py-1 dark:bg-orange-500/20">
-                      <Text className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                        Due
-                      </Text>
+                  {isDue(item.memory) && item.memory.lastReviewedAt ? (
+                    <DueBadge strength={memoryStrength(item.memory)} fadingLabel={t('home.fadingFast')} dueLabel={t('home.due')} />
+                  ) : isDue(item.memory) ? (
+                    <View className="rounded-full bg-blue-100 px-2 py-1 dark:bg-blue-500/20">
+                      <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">{t('home.new')}</Text>
                     </View>
                   ) : (
                     <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
@@ -161,11 +184,11 @@ export default function HomeScreen() {
         )}
         ListEmptyComponent={
           query ? (
-            <EmptyState title="No matches." hint="Try a different search term." />
+            <EmptyState title={t('home.noMatches')} hint={t('home.noMatchesHint')} />
           ) : (
             <EmptyState
-              title="Your library is empty."
-              hint="Tap + to save notes or an AI chat, or upload a text file. Saved items appear here and get quizzed on a schedule."
+              title={t('home.emptyTitle')}
+              hint={t('home.emptyHint')}
             />
           )
         }

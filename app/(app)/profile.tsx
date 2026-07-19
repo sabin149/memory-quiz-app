@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { confirmAction } from '@/utils/confirm';
 import Card from '@/components/ui/Card';
 import {
   deactivateAccount,
@@ -48,6 +50,7 @@ function Row({
 }
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { user, isAdmin, gamification, conversations, clearUserData } = useQuizStore();
   const router = useRouter();
   const [sendingVerification, setSendingVerification] = useState(false);
@@ -72,6 +75,12 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    const confirmed = await confirmAction({
+      title: t('profile.logoutConfirmTitle'),
+      message: t('profile.logoutConfirmBody'),
+      confirmLabel: t('common.logout'),
+    });
+    if (!confirmed) return;
     try {
       await logout();
     } catch {
@@ -80,30 +89,24 @@ export default function ProfileScreen() {
     clearUserData();
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'Your account will be deactivated and you will be logged out. You will no longer be able to log in. This cannot be undone from the app.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete my account',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deactivateAccount();
-              clearUserData();
-            } catch (error) {
-              Toast.show({
-                type: 'error',
-                text1: 'Deletion failed',
-                text2: toAuthErrorMessage(error),
-              });
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteAccount = async () => {
+    const confirmed = await confirmAction({
+      title: t('profile.deleteConfirmTitle'),
+      message: t('profile.deleteConfirmBody'),
+      confirmLabel: t('profile.deleteConfirmButton'),
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deactivateAccount();
+      clearUserData();
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: t('profile.deletionFailed'),
+        text2: toAuthErrorMessage(error),
+      });
+    }
   };
 
   return (
@@ -122,29 +125,29 @@ export default function ProfileScreen() {
         {user?.emailVerification ? (
           <View className="mt-2 flex-row items-center">
             <Ionicons name="checkmark-circle" size={14} color="#22C55E" />
-            <Text className="ml-1 text-xs text-green-600">Verified</Text>
+            <Text className="ml-1 text-xs text-green-600">{t('profile.verified')}</Text>
           </View>
         ) : (
           <Pressable className="mt-2" onPress={handleSendVerification} accessibilityRole="button">
             <Text className="text-xs text-secondary dark:text-accent">
-              {sendingVerification ? 'Sending…' : 'Email not verified — send link'}
+              {sendingVerification ? t('profile.sending') : t('profile.notVerified')}
             </Text>
           </Pressable>
         )}
         <View className="mt-4 flex-row">
           <View className="mx-4 items-center">
             <Text className="text-lg font-bold text-black dark:text-dark-text">{streak}</Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400">Streak</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">{t('profile.streak')}</Text>
           </View>
           <View className="mx-4 items-center">
             <Text className="text-lg font-bold text-black dark:text-dark-text">{level.level}</Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400">Level</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">{t('profile.level')}</Text>
           </View>
           <View className="mx-4 items-center">
             <Text className="text-lg font-bold text-black dark:text-dark-text">
               {conversations.length}
             </Text>
-            <Text className="text-xs text-gray-500 dark:text-gray-400">Saved</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">{t('profile.saved')}</Text>
           </View>
         </View>
       </Card>
@@ -152,29 +155,29 @@ export default function ProfileScreen() {
       <Card className="mb-4">
         <Row
           icon="notifications-outline"
-          label="Quiz reminders & appearance"
+          label={t('profile.preferences')}
           onPress={() => router.push('/settings')}
         />
         <View className="h-px bg-gray-200 dark:bg-gray-700" />
-        <Row icon="trending-up-outline" label="Progress & achievements" onPress={() => router.push('/stats')} />
+        <Row icon="trending-up-outline" label={t('profile.progress')} onPress={() => router.push('/stats')} />
         <View className="h-px bg-gray-200 dark:bg-gray-700" />
         <Row
           icon="document-lock-outline"
-          label="Privacy policy"
+          label={t('profile.privacyPolicy')}
           onPress={() => router.push('/privacy')}
         />
         {isAdmin && (
           <>
             <View className="h-px bg-gray-200 dark:bg-gray-700" />
-            <Row icon="shield-outline" label="Admin portal" onPress={() => router.push('/admin')} />
+            <Row icon="shield-outline" label={t('profile.adminPortal')} onPress={() => router.push('/admin')} />
           </>
         )}
       </Card>
 
       <Card>
-        <Row icon="log-out-outline" label="Log out" onPress={handleLogout} />
+        <Row icon="log-out-outline" label={t('common.logout')} onPress={handleLogout} />
         <View className="h-px bg-gray-200 dark:bg-gray-700" />
-        <Row icon="trash-outline" label="Delete account" onPress={handleDeleteAccount} danger />
+        <Row icon="trash-outline" label={t('profile.deleteAccount')} onPress={handleDeleteAccount} danger />
       </Card>
     </ScrollView>
   );

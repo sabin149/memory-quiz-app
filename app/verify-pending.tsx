@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -15,6 +16,7 @@ import { useQuizStore } from '@/store';
 
 /** Shown to logged-in users until they verify their email address. */
 export default function VerifyPendingScreen() {
+  const { t } = useTranslation();
   const user = useQuizStore((s) => s.user);
   const setUser = useQuizStore((s) => s.setUser);
   const clearUserData = useQuizStore((s) => s.clearUserData);
@@ -31,8 +33,8 @@ export default function VerifyPendingScreen() {
       await sendVerificationEmail();
       Toast.show({
         type: 'success',
-        text1: 'Verification sent',
-        text2: `Check ${user.email} and open the link.`,
+        text1: t('verify.sent'),
+        text2: t('verify.sentBody', { email: user.email }),
       });
     } catch (error) {
       Toast.show({ type: 'error', text1: 'Could not send', text2: toAuthErrorMessage(error) });
@@ -51,8 +53,8 @@ export default function VerifyPendingScreen() {
     } else {
       Toast.show({
         type: 'info',
-        text1: 'Not verified yet',
-        text2: 'Open the link in your email first, then try again.',
+        text1: t('verify.notYet'),
+        text2: t('verify.notYetBody'),
       });
     }
   };
@@ -72,30 +74,26 @@ export default function VerifyPendingScreen() {
         <View className="mb-6 items-center">
           <Ionicons name="mail-unread-outline" size={64} color="#4B5EAA" />
         </View>
-        <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-          Verify your email
-        </Text>
+        <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">{t('verify.title')}</Text>
         <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
-          We sent a verification link to{' '}
-          <Text className="font-semibold text-black dark:text-dark-text">{user.email}</Text>. Open
-          it, then come back here.
+          {t('verify.body', { email: user.email })}
         </Text>
         <Button
-          title="I've verified — continue"
+          title={t('verify.continueButton')}
           icon="checkmark-circle-outline"
           onPress={handleCheck}
           loading={checking}
           className="mb-3"
         />
         <Button
-          title="Resend email"
+          title={t('verify.resend')}
           icon="mail-outline"
           variant="secondary"
           onPress={handleResend}
           loading={sending}
           className="mb-3"
         />
-        <Button title="Log out" variant="ghost" onPress={handleLogout} />
+        <Button title={t('common.logout')} variant="ghost" onPress={handleLogout} />
       </Animated.View>
     </View>
   );

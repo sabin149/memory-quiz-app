@@ -1,5 +1,6 @@
+import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { Query } from 'react-native-appwrite';
 import { DATABASE_ID, databases } from '@/lib/appwrite';
@@ -10,34 +11,30 @@ const WINDOW_LIMIT = 100;
 /** Per-user activity timeline: event names + timestamps only, never content. */
 export default function AdminUserDetailScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
-  const [events, setEvents] = useState<AnalyticsEvent[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    if (!userId) return;
-    setError(null);
-    setEvents(null);
-    try {
+  const {
+    data: events,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['admin-user-events', userId],
+    enabled: Boolean(userId),
+    queryFn: async () => {
       const result = await databases.listDocuments<AnalyticsEvent>(DATABASE_ID, 'events', [
-        Query.equal('ownerId', userId),
+        Query.equal('ownerId', userId!),
         Query.orderDesc('$createdAt'),
         Query.limit(WINDOW_LIMIT),
       ]);
-      setEvents(result.documents);
-    } catch {
-      setError('Could not load this user’s activity.');
-    }
-  }, [userId]);
+      return result.documents;
+    },
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  if (error) {
+  if (isError) {
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
-        <Text className="mb-4 text-center text-gray-500 dark:text-gray-400">{error}</Text>
-        <Pressable className="rounded-lg bg-primary p-3" onPress={load}>
+        <Text className="mb-4 text-center text-gray-500 dark:text-gray-400">
+          Could not load this user’s activity.
+        </Text>
+        <Pressable className="rounded-lg bg-primary p-3" onPress={() => refetch()}>
           <Text className="text-center font-semibold text-white">Retry</Text>
         </Pressable>
       </View>

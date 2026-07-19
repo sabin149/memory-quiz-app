@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -6,6 +7,7 @@ import { colorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/ui/ToastCard';
+import { applyLanguage } from '@/lib/i18n';
 import { initCrashReporting } from '@/lib/sentry';
 import { getCurrentUser } from '@/services/auth';
 import { useQuizStore } from '@/store';
@@ -13,6 +15,12 @@ import './globals.css';
 
 initCrashReporting();
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: true },
+  },
+});
 
 export default function RootLayout() {
   const { authReady, setUser, setAuthReady } = useQuizStore();
@@ -23,10 +31,15 @@ export default function RootLayout() {
     ...MaterialCommunityIcons.font,
   });
 
-  // Re-applied when the persisted preference finishes rehydrating.
+  const language = useQuizStore((s) => s.language);
+
+  // Re-applied when the persisted preferences finish rehydrating.
   useEffect(() => {
     colorScheme.set(theme);
   }, [theme]);
+  useEffect(() => {
+    applyLanguage(language);
+  }, [language]);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +66,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -67,6 +80,6 @@ export default function RootLayout() {
         <Stack.Screen name="verify-email" options={{ headerShown: false }} />
       </Stack>
       <Toast config={toastConfig} position="bottom" bottomOffset={70} />
-    </>
+    </QueryClientProvider>
   );
 }

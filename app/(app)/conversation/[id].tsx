@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { confirmAction } from '@/utils/confirm';
 import StrengthBar from '@/components/StrengthBar';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -44,6 +46,7 @@ function Chip({
 }
 
 export default function ConversationDetailScreen() {
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { conversations, tagConversation, removeConversation } = useQuizStore();
@@ -66,22 +69,17 @@ export default function ConversationDetailScreen() {
   const strength = memoryStrength(conversation.memory);
   const due = isDue(conversation.memory);
 
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete conversation',
-      `Delete "${conversation.title}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            removeConversation(conversation.id);
-            router.back();
-          },
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    const confirmed = await confirmAction({
+      title: 'Delete conversation',
+      message: `Delete "${conversation.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (confirmed) {
+      removeConversation(conversation.id);
+      router.back();
+    }
   };
 
   return (
@@ -145,8 +143,8 @@ export default function ConversationDetailScreen() {
       </Card>
 
       <Card className="mb-4">
-        <Text className="mb-3 font-semibold text-black dark:text-dark-text">Quiz me</Text>
-        <Text className="mb-2 text-xs text-gray-500 dark:text-gray-400">Difficulty</Text>
+        <Text className="mb-3 font-semibold text-black dark:text-dark-text">{t('quiz.quizMe')}</Text>
+        <Text className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t('quiz.difficulty')}</Text>
         <View className="mb-3 flex-row">
           {DIFFICULTIES.map((d) => (
             <Chip
@@ -157,14 +155,14 @@ export default function ConversationDetailScreen() {
             />
           ))}
         </View>
-        <Text className="mb-2 text-xs text-gray-500 dark:text-gray-400">Questions</Text>
+        <Text className="mb-2 text-xs text-gray-500 dark:text-gray-400">{t('quiz.questions')}</Text>
         <View className="mb-4 flex-row">
           {QUESTION_COUNTS.map((n) => (
             <Chip key={n} label={String(n)} selected={count === n} onPress={() => setCount(n)} />
           ))}
         </View>
         <Button
-          title="Start quiz"
+          title={t('quiz.startQuiz')}
           icon="school-outline"
           onPress={() =>
             router.push({

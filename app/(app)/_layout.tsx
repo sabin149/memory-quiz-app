@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { checkIsAdmin } from '@/services/admin';
 import { trackEvent } from '@/services/analytics';
 import { scheduleQuizReminder } from '@/services/notifications';
 import { useQuizStore } from '@/store';
 
 export default function AppLayout() {
+  const { t } = useTranslation();
   const user = useQuizStore((s) => s.user);
   const syncConversations = useQuizStore((s) => s.syncConversations);
 
@@ -34,13 +36,16 @@ export default function AppLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#4B5EAA',
         tabBarInactiveTintColor: '#9CA3AF',
-        headerTitleStyle: { fontWeight: '600' },
+        headerStyle: { backgroundColor: '#4B5EAA' },
+        headerTintColor: '#fff',
+        headerTitleStyle: { fontWeight: '700' },
+        tabBarStyle: { paddingBottom: 4 },
       }}
     >
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Library',
+          title: t('tabs.library'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="library-outline" size={size} color={color} />
           ),
@@ -49,7 +54,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="practice"
         options={{
-          title: 'Practice',
+          title: t('tabs.practice'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="sparkles-outline" size={size} color={color} />
           ),
@@ -58,7 +63,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="stats"
         options={{
-          title: 'Progress',
+          title: t('tabs.progress'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="trending-up-outline" size={size} color={color} />
           ),
@@ -67,7 +72,7 @@ export default function AppLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
+          title: t('tabs.profile'),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-circle-outline" size={size} color={color} />
           ),

@@ -1,6 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import Button from '@/components/ui/Button';
@@ -11,22 +12,23 @@ const SLIDES = [
     icon: (
       <MaterialCommunityIcons name="head-question-outline" size={72} color="#4B5EAA" />
     ),
-    title: 'You forget most of what you learn',
-    body: 'Great explanations from AI chats, articles, and notes fade within days — that’s the forgetting curve.',
+    titleKey: 'onboarding.slide1Title',
+    bodyKey: 'onboarding.slide1Body',
   },
   {
     icon: <Ionicons name="cloud-upload-outline" size={72} color="#4B5EAA" />,
-    title: 'Save it here instead',
-    body: 'Paste a chat transcript, type notes, or upload a text file. Tag what matters most.',
+    titleKey: 'onboarding.slide2Title',
+    bodyKey: 'onboarding.slide2Body',
   },
   {
     icon: <Ionicons name="school-outline" size={72} color="#4B5EAA" />,
-    title: 'We quiz you before you forget',
-    body: 'Questions are built from your own content and scheduled with spaced repetition. Keep the streak alive.',
+    titleKey: 'onboarding.slide3Title',
+    bodyKey: 'onboarding.slide3Body',
   },
 ];
 
 export default function OnboardingScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const setHasOnboarded = useQuizStore((s) => s.setHasOnboarded);
   const [index, setIndex] = useState(0);
@@ -43,10 +45,10 @@ export default function OnboardingScreen() {
       <Animated.View key={index} entering={FadeInRight.duration(350)}>
         <View className="mb-6 items-center">{slide.icon}</View>
         <Text className="mb-3 text-center text-3xl font-bold text-primary dark:text-dark-text">
-          {slide.title}
+          {t(slide.titleKey)}
         </Text>
         <Text className="mb-10 text-center text-lg text-gray-600 dark:text-gray-300">
-          {slide.body}
+          {t(slide.bodyKey)}
         </Text>
       </Animated.View>
 
@@ -60,12 +62,12 @@ export default function OnboardingScreen() {
       </View>
 
       <Button
-        title={isLast ? 'Get started' : 'Next'}
+        title={isLast ? t('onboarding.getStarted') : t('common.next')}
         onPress={() => (isLast ? finish() : setIndex(index + 1))}
       />
       {!isLast && (
         <Pressable className="mt-4" onPress={finish}>
-          <Text className="text-center text-secondary dark:text-accent">Skip</Text>
+          <Text className="text-center text-secondary dark:text-accent">{t('common.skip')}</Text>
         </Pressable>
       )}
     </View>
