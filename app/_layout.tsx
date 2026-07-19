@@ -1,8 +1,11 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { colorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/components/ui/ToastCard';
 import { initCrashReporting } from '@/lib/sentry';
 import { getCurrentUser } from '@/services/auth';
 import { useQuizStore } from '@/store';
@@ -14,6 +17,11 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const { authReady, setUser, setAuthReady } = useQuizStore();
   const theme = useQuizStore((s) => s.theme);
+  // Icon fonts must be loaded explicitly for glyphs to render on web.
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+    ...MaterialCommunityIcons.font,
+  });
 
   // Re-applied when the persisted preference finishes rehydrating.
   useEffect(() => {
@@ -27,7 +35,6 @@ export default function RootLayout() {
       if (!cancelled) {
         setUser(user);
         setAuthReady(true);
-        SplashScreen.hideAsync();
       }
     })();
     return () => {
@@ -35,8 +42,14 @@ export default function RootLayout() {
     };
   }, [setUser, setAuthReady]);
 
-  if (!authReady) {
-    return null; // splash screen stays visible until the session check finishes
+  useEffect(() => {
+    if (authReady && fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [authReady, fontsLoaded]);
+
+  if (!authReady || !fontsLoaded) {
+    return null; // splash screen stays visible until session + fonts are ready
   }
 
   return (
@@ -48,11 +61,12 @@ export default function RootLayout() {
         <Stack.Screen name="admin" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="privacy" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-pending" options={{ headerShown: false }} />
         <Stack.Screen name="oauth" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="verify-email" options={{ headerShown: false }} />
       </Stack>
-      <Toast position="bottom" bottomOffset={50} />
+      <Toast config={toastConfig} position="bottom" bottomOffset={70} />
     </>
   );
 }

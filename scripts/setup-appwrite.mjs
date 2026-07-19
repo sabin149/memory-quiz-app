@@ -66,9 +66,19 @@ async function ensure(label, operation) {
 }
 
 async function main() {
-  await ensure(`database ${DATABASE_ID}`, () =>
-    databases.create(DATABASE_ID, 'Memory Quiz')
-  );
+  // Check-then-create: on free plans, create() fails with a plan-limit error
+  // (not a 409) when the database already exists.
+  await ensure(`database ${DATABASE_ID}`, async () => {
+    try {
+      await databases.get(DATABASE_ID);
+      const alreadyExists = new Error('exists');
+      alreadyExists.code = 409;
+      throw alreadyExists;
+    } catch (error) {
+      if (error?.code === 404) return databases.create(DATABASE_ID, 'Memory Quiz');
+      throw error;
+    }
+  });
 
   await ensure(`collection ${CONVERSATIONS}`, () =>
     databases.createCollection(

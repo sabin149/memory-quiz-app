@@ -6,7 +6,7 @@ import type { QuizQuestion } from '@/store';
  * offline/free-tier fallback when no server-side LLM function is configured.
  */
 
-const MAX_QUESTIONS = 5;
+const DEFAULT_MAX_QUESTIONS = 5;
 const OPTIONS_PER_QUESTION = 4;
 
 const STOPWORDS = new Set([
@@ -55,7 +55,10 @@ function shuffle<T>(items: T[]): T[] {
 
 const GENERIC_DISTRACTORS = ['process', 'system', 'concept', 'method', 'result', 'context'];
 
-export function generateClozeQuiz(content: string): QuizQuestion[] {
+export function generateClozeQuiz(
+  content: string,
+  maxQuestions: number = DEFAULT_MAX_QUESTIONS
+): QuizQuestion[] {
   const sentences = splitSentences(content);
 
   // Keyword pool across the whole text, used to build plausible distractors.
@@ -71,7 +74,7 @@ export function generateClozeQuiz(content: string): QuizQuestion[] {
   const usedKeywords = new Set<string>();
 
   for (const sentence of shuffle(sentences)) {
-    if (questions.length >= MAX_QUESTIONS) break;
+    if (questions.length >= maxQuestions) break;
 
     const keyword = pickKeyword(sentence);
     if (!keyword || usedKeywords.has(keyword.toLowerCase())) continue;

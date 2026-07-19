@@ -20,9 +20,17 @@ export const loginSchema = z.object({
 });
 export type LoginForm = z.infer<typeof loginSchema>;
 
+export const PHONE_PATTERN = /^\d{6,14}$/;
+
 export const registerSchema = z
   .object({
-    name: z.string().trim().min(1, 'Name is required').max(128, 'Name is too long'),
+    firstName: z.string().trim().min(1, 'First name is required').max(64, 'Too long'),
+    lastName: z.string().trim().min(1, 'Last name is required').max(64, 'Too long'),
+    phone: z
+      .string()
+      .trim()
+      .min(1, 'Phone number is required')
+      .regex(PHONE_PATTERN, 'Enter 6-14 digits, numbers only'),
     email: emailField,
     password: newPasswordField,
     confirmPassword: z.string().min(1, 'Confirm password is required'),

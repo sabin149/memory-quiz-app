@@ -96,12 +96,13 @@ interface AppState {
   addConversation: (input: { title: string; content: string }) => Promise<void>;
   removeConversation: (id: string) => void;
   tagConversation: (id: string) => void;
-  startQuiz: (conversationId: string, questions: QuizQuestion[]) => void;
+  /** conversationId null = ad-hoc quiz (topic/URL) with no memory schedule. */
+  startQuiz: (conversationId: string | null, questions: QuizQuestion[]) => void;
   answerQuestion: (selected: number) => void;
   nextQuestion: () => void;
   resetQuiz: () => void;
-  /** Applies SM-2 to the conversation and reschedules the reminder. */
-  applyQuizResult: (conversationId: string, correct: number, total: number) => Promise<void>;
+  /** Applies SM-2 to the conversation (when saved) and reschedules the reminder. */
+  applyQuizResult: (conversationId: string | null, correct: number, total: number) => Promise<void>;
   updateSettings: (settings: Settings) => Promise<void>;
   dueCount: () => number;
 }
@@ -292,18 +293,20 @@ export const useQuizStore = create<AppState>()(
 
       applyQuizResult: async (conversationId, correct, total) => {
         const { user, conversations, settings } = get();
-        const target = conversations.find((c) => c.id === conversationId);
-        if (!target || total === 0) return;
+        if (total === 0) return;
+        const target = conversationId
+          ? conversations.find((c) => c.id === conversationId)
+          : undefined;
 
         const scorePct = Math.round((correct / total) * 100);
-        const memory = reviewMemory(target.memory, scorePct);
         const completedAt = new Date().toISOString();
         const gamification = recordQuizActivity(get().gamification, correct, total);
+        const memory = target ? reviewMemory(target.memory, scorePct) : null;
 
         set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === conversationId ? { ...c, memory } : c
-          ),
+          conversations: memory
+            ? state.conversations.map((c) => (c.id === conversationId ? { ...c, memory } : c))
+            : state.conversations,
           lastQuizCompletedAt: completedAt,
           gamification,
         }));
@@ -311,7 +314,7 @@ export const useQuizStore = create<AppState>()(
         if (user) {
           trackEvent(user.$id, 'quiz_completed');
           saveGamificationPrefs(gamification); // cross-device sync, best effort
-          if (target.synced) {
+          if (target?.synced && memory && conversationId) {
             updateRemoteMemory(conversationId, memory).catch(() => {});
             recordQuizAttempt(user.$id, conversationId, correct, total).catch(() => {});
           }
