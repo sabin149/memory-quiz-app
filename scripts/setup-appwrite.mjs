@@ -3,18 +3,23 @@
  * Idempotent: safe to re-run; existing resources are left untouched.
  *
  * Usage:
- *   APPWRITE_API_KEY=<server key with databases.write scope> node scripts/setup-appwrite.mjs
+ *   APPWRITE_API_KEY=<server key> node scripts/setup-appwrite.mjs
+ *   Required key scopes: databases.write, teams.write, users.read.
+ *   Optional: ADMIN_EMAIL=<registered user email> to add that user to the
+ *   "admins" team (grants access to the in-app admin portal).
  *
  * Endpoint/project are read from .env (EXPO_PUBLIC_APPWRITE_*) or the
  * environment. The API key must NEVER be committed or put in .env — pass it
  * inline or export it in your shell for the one run.
  */
 import { readFileSync } from 'node:fs';
-import { Client, Databases, Permission, Role } from 'node-appwrite';
+import { Client, Databases, Permission, Query, Role, Teams, Users } from 'node-appwrite';
 
 const DATABASE_ID = 'memoryquiz';
 const CONVERSATIONS = 'conversations';
 const QUIZ_ATTEMPTS = 'quiz_attempts';
+const EVENTS = 'events';
+const ADMINS_TEAM_ID = 'admins';
 
 function loadDotEnv() {
   try {
@@ -42,6 +47,8 @@ if (!endpoint || !projectId || !apiKey) {
 
 const client = new Client().setEndpoint(endpoint).setProject(projectId).setKey(apiKey);
 const databases = new Databases(client);
+const teams = new Teams(client);
+const users = new Users(client);
 
 /** Runs an operation, ignoring "already exists" (409) conflicts. */
 async function ensure(label, operation) {
@@ -102,14 +109,27 @@ async function main() {
     databases.createIntegerAttribute(DATABASE_ID, CONVERSATIONS, 'lastScorePct', false, 0, 100)
   );
 
+  // Admins can read attempts (scores only, no content) for the analytics portal.
+  const quizAttemptPermissions = [
+    Permission.create(Role.users()),
+    Permission.read(Role.team(ADMINS_TEAM_ID)),
+  ];
   await ensure(`collection ${QUIZ_ATTEMPTS}`, () =>
     databases.createCollection(
       DATABASE_ID,
       QUIZ_ATTEMPTS,
       'Quiz Attempts',
-      [Permission.create(Role.users())],
+      quizAttemptPermissions,
       true
     )
+  );
+  // Reconciles installs provisioned before the admin portal existed.
+  await databases.updateCollection(
+    DATABASE_ID,
+    QUIZ_ATTEMPTS,
+    'Quiz Attempts',
+    quizAttemptPermissions,
+    true
   );
   await ensure(`${QUIZ_ATTEMPTS}.ownerId`, () =>
     databases.createStringAttribute(DATABASE_ID, QUIZ_ATTEMPTS, 'ownerId', 64, true)
@@ -130,6 +150,36 @@ async function main() {
     databases.createDatetimeAttribute(DATABASE_ID, QUIZ_ATTEMPTS, 'completedAt', true)
   );
 
+  // Analytics events: privacy-safe (event name + owner + timestamp, never
+  // content). Users write their own; only the admins team reads them.
+  await ensure(`collection ${EVENTS}`, () =>
+    databases.createCollection(
+      DATABASE_ID,
+      EVENTS,
+      'Events',
+      [Permission.create(Role.users()), Permission.read(Role.team(ADMINS_TEAM_ID))],
+      false
+    )
+  );
+  await ensure(`${EVENTS}.name`, () =>
+    databases.createStringAttribute(DATABASE_ID, EVENTS, 'name', 64, true)
+  );
+  await ensure(`${EVENTS}.ownerId`, () =>
+    databases.createStringAttribute(DATABASE_ID, EVENTS, 'ownerId', 64, true)
+  );
+
+  await ensure(`team ${ADMINS_TEAM_ID}`, () => teams.create(ADMINS_TEAM_ID, 'Admins'));
+  if (process.env.ADMIN_EMAIL) {
+    const found = await users.list([Query.equal('email', process.env.ADMIN_EMAIL)]);
+    if (found.users.length === 0) {
+      console.warn(`ADMIN_EMAIL ${process.env.ADMIN_EMAIL} has no account yet; register in the app first, then re-run.`);
+    } else {
+      await ensure(`admin membership for ${process.env.ADMIN_EMAIL}`, () =>
+        teams.createMembership(ADMINS_TEAM_ID, ['admin'], undefined, found.users[0].$id)
+      );
+    }
+  }
+
   // Attributes must finish processing before indexes can reference them.
   console.log('waiting for attributes to be available…');
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -139,6 +189,9 @@ async function main() {
   );
   await ensure(`${QUIZ_ATTEMPTS} index owner_completed`, () =>
     databases.createIndex(DATABASE_ID, QUIZ_ATTEMPTS, 'owner_completed', 'key', ['ownerId', 'completedAt'])
+  );
+  await ensure(`${EVENTS} index owner_name`, () =>
+    databases.createIndex(DATABASE_ID, EVENTS, 'owner_name', 'key', ['ownerId', 'name'])
   );
 
   console.log('done.');

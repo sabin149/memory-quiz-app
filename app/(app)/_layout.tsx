@@ -1,5 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 import { useEffect } from 'react';
+import { checkIsAdmin } from '@/services/admin';
+import { trackEvent } from '@/services/analytics';
 import { scheduleQuizReminder } from '@/services/notifications';
 import { useQuizStore } from '@/store';
 
@@ -9,6 +11,8 @@ export default function AppLayout() {
 
   useEffect(() => {
     if (!user) return;
+    trackEvent(user.$id, 'app_opened');
+    checkIsAdmin().then((isAdmin) => useQuizStore.getState().setIsAdmin(isAdmin));
     (async () => {
       await syncConversations();
       const { settings, lastQuizCompletedAt, dueCount } = useQuizStore.getState();

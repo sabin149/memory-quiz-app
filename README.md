@@ -76,6 +76,7 @@ app/
   index.tsx                # Redirects to /home or /login
   (auth)/                  # Public routes (login, register, password reset)
   (app)/                   # Authenticated routes (home, quiz, edit, settings)
+  admin/                   # Admin portal (requires "admins" team membership)
 components/                # Shared UI components
 functions/generate-quiz/   # Optional Appwrite Function for LLM quiz generation
 lib/appwrite.ts            # Appwrite client + database/collection ids
@@ -109,6 +110,19 @@ utils/
 - Conversations sync to Appwrite Databases with per-user document permissions; offline changes are cached locally and pushed on the next launch
 - A local notification reminds you to review, honoring the interval (days) and time set in Settings
 
+## Admin portal
+
+Members of the Appwrite `admins` team see an **Admin portal** entry on the home screen (best experienced on web via `npm run web`):
+
+- Dashboard: DAU/WAU, signups, quizzes taken, average accuracy, content volume, 7-day activity chart
+- Per-user activity list and per-user event timeline drill-down
+
+Analytics are privacy-safe by design: the `events` collection stores only an event name, user id, and timestamp — user content is never collected, and only the `admins` team can read events and quiz scores. To make yourself an admin, run the provisioning script with your registered email:
+
+```bash
+APPWRITE_API_KEY=<server-key> ADMIN_EMAIL=you@example.com node scripts/setup-appwrite.mjs
+```
+
 ## Status & roadmap
 
 Delivered so far:
@@ -116,9 +130,9 @@ Delivered so far:
 - **Phase 1 — Foundation**: real Appwrite email/password auth with session restore, route-group auth guards, local persistence (conversations + settings survive restarts), quiz flow fixes, input validation, dead code removed.
 - **Phase 2 — Auth complete**: Google + GitHub OAuth (deep-link flow), password reset, email verification, account deactivation, safe user-facing error messages.
 - **Phase 3 — Real quizzes**: conversations synced to Appwrite Databases (per-user permissions); questions generated from conversation content (on-device cloze + optional LLM function); quiz attempts recorded; SM-2 spaced-repetition scheduling with due badges; local notifications honoring the interval/time settings.
+- **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); `/admin` dashboard gated by the Appwrite "admins" team — DAU/WAU, signups, quiz accuracy, activity chart, per-user drill-down.
 
 Pending:
 
-- **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); web `/admin` dashboard gated by an Appwrite "admins" team — active users, retention, quiz accuracy, per-user activity.
 - **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by correct answers), daily streaks, review heatmap, XP/levels, achievements, daily goal ring; shared component library, working dark mode, micro-interactions, onboarding.
 - **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review.
