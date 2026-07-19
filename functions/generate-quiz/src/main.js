@@ -2,15 +2,46 @@
  * Appwrite Function: generates comprehension-focused quiz questions from
  * saved content, a free-form topic, or a public URL, using an
  * OpenAI-compatible chat completions API. The API key stays in the
- * function's environment (OPENAI_API_KEY) and never reaches the app bundle.
+ * function's environment (AI_API_KEY) and never reaches the app bundle.
  *
  * Request body (JSON):
  *   { "content"?: string, "topic"?: string, "url"?: string,
  *     "difficulty"?: "easy"|"medium"|"hard", "count"?: number }
  * Response body (JSON): { "questions": [{ "question", "options", "correct" }] }
  */
-const MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const API_URL = process.env.OPENAI_API_URL || 'https://api.openai.com/v1/chat/completions';
+/**
+ * Provider selection: set AI_PROVIDER to a preset and AI_API_KEY to its key.
+ * AI_MODEL / AI_API_URL override the preset when needed. The legacy
+ * OPENAI_API_KEY / OPENAI_MODEL / OPENAI_API_URL variables still work.
+ * All providers here speak the OpenAI chat-completions protocol.
+ */
+const PROVIDERS = {
+  openai: {
+    url: 'https://api.openai.com/v1/chat/completions',
+    model: 'gpt-4o-mini',
+  },
+  gemini: {
+    url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+    model: 'gemini-2.0-flash',
+  },
+  groq: {
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    model: 'llama-3.3-70b-versatile',
+  },
+  together: {
+    url: 'https://api.together.xyz/v1/chat/completions',
+    model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+  },
+  openrouter: {
+    url: 'https://openrouter.ai/api/v1/chat/completions',
+    model: 'google/gemini-2.0-flash-001',
+  },
+};
+
+const preset = PROVIDERS[(process.env.AI_PROVIDER || 'openai').toLowerCase()] ?? PROVIDERS.openai;
+const API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
+const MODEL = process.env.AI_MODEL || process.env.OPENAI_MODEL || preset.model;
+const API_URL = process.env.AI_API_URL || process.env.OPENAI_API_URL || preset.url;
 const MAX_CONTENT_CHARS = 12000;
 const MAX_COUNT = 15;
 
@@ -62,8 +93,8 @@ async function fetchUrlText(url, error) {
 }
 
 export default async ({ req, res, error }) => {
-  if (!process.env.OPENAI_API_KEY) {
-    error('OPENAI_API_KEY is not configured on this function.');
+  if (!API_KEY) {
+    error('AI_API_KEY is not configured on this function.');
     return res.json({ questions: [] }, 500);
   }
 
@@ -104,7 +135,7 @@ export default async ({ req, res, error }) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
         model: MODEL,
