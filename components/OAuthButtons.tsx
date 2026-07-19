@@ -1,5 +1,7 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { trackEvent } from '@/services/analytics';
 import {
@@ -14,12 +16,38 @@ interface OAuthButtonsProps {
   disabled?: boolean;
 }
 
-const PROVIDERS: { key: OAuthProviderKey; label: string; className: string }[] = [
-  { key: 'google', label: 'Continue with Google', className: 'bg-[#DB4437]' },
-  { key: 'github', label: 'Continue with GitHub', className: 'bg-[#24292F]' },
+/** Provider-conventional styling: Google white with border, GitHub dark. */
+const PROVIDERS: {
+  key: OAuthProviderKey;
+  labelKey: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  container: string;
+  label: string;
+  iconColor: string;
+  spinner: string;
+}[] = [
+  {
+    key: 'google',
+    labelKey: 'auth.continueWithGoogle',
+    icon: 'logo-google',
+    container: 'border border-gray-300 bg-white dark:border-gray-500',
+    label: 'text-gray-800',
+    iconColor: '#4285F4',
+    spinner: '#4285F4',
+  },
+  {
+    key: 'github',
+    labelKey: 'auth.continueWithGithub',
+    icon: 'logo-github',
+    container: 'bg-[#24292F]',
+    label: 'text-white',
+    iconColor: '#fff',
+    spinner: '#fff',
+  },
 ];
 
 export default function OAuthButtons({ onLoggedIn, disabled }: OAuthButtonsProps) {
+  const { t } = useTranslation();
   const [busyProvider, setBusyProvider] = useState<OAuthProviderKey | null>(null);
 
   const handlePress = async (provider: OAuthProviderKey) => {
@@ -31,7 +59,11 @@ export default function OAuthButtons({ onLoggedIn, disabled }: OAuthButtonsProps
         onLoggedIn(user);
       }
     } catch (error) {
-      Toast.show({ type: 'error', text1: 'Sign-in failed', text2: toAuthErrorMessage(error) });
+      Toast.show({
+        type: 'error',
+        text1: t('auth.signInFailed'),
+        text2: toAuthErrorMessage(error),
+      });
     } finally {
       setBusyProvider(null);
     }
@@ -41,21 +73,28 @@ export default function OAuthButtons({ onLoggedIn, disabled }: OAuthButtonsProps
     <View>
       <View className="mb-4 flex-row items-center">
         <View className="h-px flex-1 bg-gray-300 dark:bg-gray-600" />
-        <Text className="mx-3 text-gray-500 dark:text-gray-400">or</Text>
+        <Text className="mx-3 text-gray-500 dark:text-gray-400">{t('auth.or')}</Text>
         <View className="h-px flex-1 bg-gray-300 dark:bg-gray-600" />
       </View>
-      {PROVIDERS.map(({ key, label, className }) => {
+      {PROVIDERS.map(({ key, labelKey, icon, container, label, iconColor, spinner }) => {
         const busy = busyProvider === key;
         return (
           <Pressable
             key={key}
-            className={`mb-3 rounded-lg p-3 ${className} ${busy ? 'opacity-60' : ''}`}
+            className={`mb-3 flex-row items-center justify-center rounded-lg p-3 active:opacity-80 ${container} ${busy || disabled ? 'opacity-60' : ''}`}
             onPress={() => handlePress(key)}
             disabled={disabled || busyProvider !== null}
+            accessibilityRole="button"
+            accessibilityLabel={t(labelKey)}
           >
-            <Text className="text-center font-semibold text-white">
-              {busy ? 'Opening browser…' : label}
-            </Text>
+            {busy ? (
+              <ActivityIndicator size="small" color={spinner} />
+            ) : (
+              <>
+                <Ionicons name={icon} size={20} color={iconColor} />
+                <Text className={`ml-3 font-semibold ${label}`}>{t(labelKey)}</Text>
+              </>
+            )}
           </Pressable>
         );
       })}
