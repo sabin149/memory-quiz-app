@@ -44,12 +44,15 @@ export default function AppLayout() {
         // Edge-to-edge (app.json) draws under the Android system bar; a
         // hardcoded paddingBottom would override the safe-area inset and
         // half-hide the tab labels. Pad with the real inset instead.
+        // Height budget (measured): item padding 10 + icon slot ~30 +
+        // label 14 + bar padding 16 => 70; anything less clips the label.
         tabBarStyle: {
-          height: 56 + insets.bottom,
-          paddingBottom: Math.max(insets.bottom, 6),
-          paddingTop: 6,
+          height: 72 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 8,
         },
-        tabBarLabelStyle: { fontSize: 11 },
+        tabBarLabelStyle: { fontSize: 11, lineHeight: 14 },
+        tabBarIconStyle: { marginBottom: 2 },
         tabBarAllowFontScaling: false,
       }}
     >
@@ -57,36 +60,28 @@ export default function AppLayout() {
         name="home"
         options={{
           title: t('tabs.library'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="library-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="library-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="practice"
         options={{
           title: t('tabs.practice'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sparkles-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="sparkles-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: t('tabs.progress'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="trending-up-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="trending-up-outline" size={22} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: t('tabs.profile'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle-outline" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <Ionicons name="person-circle-outline" size={22} color={color} />,
         }}
       />
       {/* Screens reachable by navigation but hidden from the tab bar. */}
