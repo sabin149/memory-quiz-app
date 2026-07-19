@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { confirmAction } from '@/utils/confirm';
 import Card from '@/components/ui/Card';
@@ -51,7 +51,15 @@ function Row({
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
-  const { user, isAdmin, gamification, conversations, clearUserData } = useQuizStore();
+  const {
+    user,
+    isAdmin,
+    gamification,
+    conversations,
+    clearUserData,
+    leaderboardOptIn,
+    setLeaderboardOptIn,
+  } = useQuizStore();
   const router = useRouter();
   const [sendingVerification, setSendingVerification] = useState(false);
 
@@ -160,6 +168,32 @@ export default function ProfileScreen() {
         />
         <View className="h-px bg-gray-200 dark:bg-gray-700" />
         <Row icon="trending-up-outline" label={t('profile.progress')} onPress={() => router.push('/stats')} />
+        <View className="h-px bg-gray-200 dark:bg-gray-700" />
+        <View className="flex-row items-center py-3">
+          <Ionicons name="podium-outline" size={20} color="#4B5EAA" />
+          <View className="ml-3 flex-1">
+            <Text className="text-black dark:text-dark-text">{t('leaderboard.title')}</Text>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
+              {leaderboardOptIn ? t('leaderboard.joined') : t('leaderboard.join')}
+            </Text>
+          </View>
+          <Switch
+            value={leaderboardOptIn}
+            onValueChange={async (v) => {
+              try {
+                await setLeaderboardOptIn(v);
+              } catch (error) {
+                Toast.show({
+                  type: 'error',
+                  text1: t('leaderboard.joinFailed'),
+                  text2: error instanceof Error ? error.message : undefined,
+                });
+              }
+            }}
+            trackColor={{ true: '#4B5EAA' }}
+            accessibilityLabel={t('leaderboard.join')}
+          />
+        </View>
         <View className="h-px bg-gray-200 dark:bg-gray-700" />
         <Row
           icon="document-lock-outline"

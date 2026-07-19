@@ -89,6 +89,7 @@ export default function AppLayout() {
       <Tabs.Screen name="edit" options={{ href: null, title: 'Add Conversation' }} />
       <Tabs.Screen name="settings" options={{ href: null, title: 'Preferences' }} />
       <Tabs.Screen name="conversation/[id]" options={{ href: null, title: 'Conversation' }} />
+      <Tabs.Screen name="leaderboard" options={{ href: null, title: 'Leaderboard' }} />
     </Tabs>
   );
 }

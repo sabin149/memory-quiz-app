@@ -144,5 +144,17 @@
     "saved": "Saved",
     "savedBody": "Preferences updated.",
     "custom": "Custom"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "byXp": "Top XP",
+    "byStreak": "Top streaks",
+    "join": "Join the leaderboard",
+    "joined": "You are on the leaderboard!",
+    "joinFailed": "Could not join",
+    "optInHint": "Compete on streaks and XP with other learners. Opt-in only: your first name and progress numbers are shared — never your content.",
+    "loadFailed": "Could not load the leaderboard.",
+    "empty": "Nobody here yet — be the first to join!",
+    "you": "you"
   }
 }

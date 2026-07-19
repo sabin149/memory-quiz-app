@@ -20,6 +20,10 @@ import {
   updateRemoteMemory,
   updateRemoteTag,
 } from '@/services/conversations';
+import {
+  removeLeaderboardEntry,
+  upsertLeaderboardEntry,
+} from '@/services/leaderboard';
 import { scheduleQuizReminder } from '@/services/notifications';
 import {
   answerQuality,
@@ -95,7 +99,10 @@ interface AppState {
   setLanguage: (language: LanguagePreference) => void;
   gamification: GamificationState;
   hasOnboarded: boolean;
+  /** Publishes first name + XP/streak/level to the global leaderboard. */
+  leaderboardOptIn: boolean;
   setHasOnboarded: (done: boolean) => void;
+  setLeaderboardOptIn: (optIn: boolean) => Promise<void>;
   setUser: (user: User | null) => void;
   setAuthReady: (ready: boolean) => void;
   setIsAdmin: (isAdmin: boolean) => void;
@@ -141,8 +148,22 @@ export const useQuizStore = create<AppState>()(
       },
       gamification: EMPTY_GAMIFICATION,
       hasOnboarded: false,
+      leaderboardOptIn: false,
 
       setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
+
+      setLeaderboardOptIn: async (optIn) => {
+        const { user, gamification } = get();
+        set({ leaderboardOptIn: optIn });
+        if (!user) return;
+        try {
+          if (optIn) await upsertLeaderboardEntry(user, gamification);
+          else await removeLeaderboardEntry(user.$id);
+        } catch {
+          set({ leaderboardOptIn: !optIn }); // revert on failure
+          throw new Error('Could not update the leaderboard right now.');
+        }
+      },
       setUser: (user) => set(user ? { user } : { user: null, isAdmin: false }),
       setAuthReady: (authReady) => set({ authReady }),
       setIsAdmin: (isAdmin) => set({ isAdmin }),
@@ -356,6 +377,9 @@ export const useQuizStore = create<AppState>()(
         if (user) {
           trackEvent(user.$id, 'quiz_completed');
           saveGamificationPrefs(gamification); // cross-device sync, best effort
+          if (get().leaderboardOptIn) {
+            upsertLeaderboardEntry(user, gamification).catch(() => {});
+          }
           if (target?.synced && memory && conversationId) {
             updateRemoteMemory(conversationId, memory).catch(() => {});
             recordQuizAttempt(user.$id, conversationId, correct, total).catch(() => {});
@@ -387,6 +411,7 @@ export const useQuizStore = create<AppState>()(
         language: state.language,
         gamification: state.gamification,
         hasOnboarded: state.hasOnboarded,
+        leaderboardOptIn: state.leaderboardOptIn,
       }),
       version: 2,
       migrate: (persisted: unknown, version: number) => {
