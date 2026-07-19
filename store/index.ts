@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colorScheme } from 'nativewind';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { applyLanguage, LanguagePreference } from '@/lib/i18n';
 import { saveGamificationPrefs, User } from '@/services/auth';
 import { trackEvent } from '@/services/analytics';
 import {
@@ -80,6 +81,8 @@ interface AppState {
   quiz: QuizState;
   settings: Settings;
   theme: ThemePreference;
+  language: LanguagePreference;
+  setLanguage: (language: LanguagePreference) => void;
   gamification: GamificationState;
   hasOnboarded: boolean;
   setHasOnboarded: (done: boolean) => void;
@@ -120,6 +123,11 @@ export const useQuizStore = create<AppState>()(
       quiz: EMPTY_QUIZ,
       settings: { quizIntervalDays: 2, quizTime: '08:00' },
       theme: 'system',
+      language: 'system',
+      setLanguage: (language) => {
+        set({ language });
+        applyLanguage(language);
+      },
       gamification: EMPTY_GAMIFICATION,
       hasOnboarded: false,
 
@@ -342,6 +350,7 @@ export const useQuizStore = create<AppState>()(
         lastQuizCompletedAt: state.lastQuizCompletedAt,
         settings: state.settings,
         theme: state.theme,
+        language: state.language,
         gamification: state.gamification,
         hasOnboarded: state.hasOnboarded,
       }),

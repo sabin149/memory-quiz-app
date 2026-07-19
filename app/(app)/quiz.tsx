@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
@@ -17,6 +18,7 @@ function answerFeedback(correct: boolean) {
 }
 
 export default function QuizScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     conversationId?: string;
     topic?: string;
@@ -92,7 +94,7 @@ export default function QuizScreen() {
           <>
             <ActivityIndicator />
             <Text className="mt-4 text-center text-lg text-gray-500 dark:text-gray-400">
-              Building your quiz from “{sourceTitle}”…
+              {t('quiz.building', { title: sourceTitle })}
             </Text>
           </>
         ) : (
@@ -103,7 +105,7 @@ export default function QuizScreen() {
             <Text className="text-center text-lg text-gray-500 dark:text-gray-400">
               {genError}
             </Text>
-            <Button title="Go back" onPress={() => router.back()} className="mt-4" />
+            <Button title={t('common.goBack')} onPress={() => router.back()} className="mt-4" />
           </>
         )}
       </View>
@@ -126,20 +128,20 @@ export default function QuizScreen() {
           />
         </Animated.View>
         <Text className="mb-2 mt-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-          Quiz complete
+          {t('quiz.complete')}
         </Text>
         <Text className="mb-2 text-center text-lg text-black dark:text-dark-text">
-          You got {correct} of {total} right — +{xpForQuiz(correct, total)} XP
-          {correct === total ? ' (perfect bonus!)' : ''}
+          {t('quiz.result', { correct, total, xp: xpForQuiz(correct, total) })}
+          {correct === total ? t('quiz.perfectBonus') : ''}
         </Text>
         {nextReview && (
           <Text className="mb-6 text-center text-gray-500 dark:text-gray-400">
-            Next review scheduled for {nextReview}
+            {t('quiz.nextReview', { date: nextReview })}
           </Text>
         )}
-        <Button title="Try again" icon="refresh-outline" onPress={beginQuiz} className="mb-3" />
+        <Button title={t('common.tryAgain')} icon="refresh-outline" onPress={beginQuiz} className="mb-3" />
         <Button
-          title="Done"
+          title={t('common.done')}
           icon="checkmark-outline"
           variant="secondary"
           onPress={() => router.back()}
@@ -165,7 +167,7 @@ export default function QuizScreen() {
         {sourceTitle}
       </Text>
       <Text className="mb-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        Question {quiz.currentQuestion + 1} of {quiz.questions.length}
+        {t('quiz.questionOf', { current: quiz.currentQuestion + 1, total: quiz.questions.length })}
       </Text>
       <Animated.View key={quiz.currentQuestion} entering={FadeInRight.duration(300)}>
         <Text className="mb-4 text-lg text-black dark:text-dark-text">{question.question}</Text>
@@ -199,8 +201,8 @@ export default function QuizScreen() {
             }`}
           >
             {selected === question.correct
-              ? 'Correct!'
-              : `Correct answer: ${question.options[question.correct]}`}
+              ? t('quiz.correct')
+              : t('quiz.correctAnswer', { answer: question.options[question.correct] })}
           </Text>
           <Pressable
             className="mt-4 flex-row items-center justify-center rounded-lg bg-blue-500 p-3 active:opacity-80"
@@ -208,14 +210,14 @@ export default function QuizScreen() {
             accessibilityRole="button"
           >
             <Text className="text-center font-semibold text-white">
-              {quiz.currentQuestion < quiz.questions.length - 1 ? 'Next' : 'Finish'}
+              {quiz.currentQuestion < quiz.questions.length - 1 ? t('common.next') : t('common.finish')}
             </Text>
             <Ionicons name="arrow-forward" size={16} color="#fff" style={{ marginLeft: 6 }} />
           </Pressable>
         </Animated.View>
       )}
       <Text className="mt-4 text-center text-lg text-black dark:text-dark-text">
-        Score: {quiz.score}
+        {t('quiz.score', { score: quiz.score })}
       </Text>
     </View>
   );

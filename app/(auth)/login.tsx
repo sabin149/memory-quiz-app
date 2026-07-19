@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -14,6 +15,7 @@ import { useQuizStore } from '@/store';
 import { LoginForm, loginSchema } from '@/utils/validation';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const {
     control,
     handleSubmit,
@@ -57,17 +59,17 @@ export default function LoginScreen() {
       >
         <Animated.View entering={FadeInDown.duration(400)}>
           <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
-            Welcome back
+            {t('auth.welcomeBack')}
           </Text>
           <Text className="mb-8 text-center text-gray-500 dark:text-gray-400">
-            Log in to keep your memory sharp
+            {t('auth.loginSubtitle')}
           </Text>
           <Controller
             control={control}
             name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextField
-                placeholder="Email"
+                placeholder={t('auth.email')}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -84,7 +86,7 @@ export default function LoginScreen() {
             name="password"
             render={({ field: { onChange, onBlur, value } }) => (
               <PasswordField
-                placeholder="Password"
+                placeholder={t('auth.password')}
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
@@ -95,7 +97,7 @@ export default function LoginScreen() {
             )}
           />
           <Button
-            title="Login"
+            title={t('auth.login')}
             icon="log-in-outline"
             onPress={handleSubmit(onSubmit)}
             loading={submitting}
@@ -106,12 +108,14 @@ export default function LoginScreen() {
             onPress={() => router.push('/forgot-password')}
             disabled={submitting}
           >
-            <Text className="text-center text-secondary dark:text-accent">Forgot password?</Text>
+            <Text className="text-center text-secondary dark:text-accent">
+              {t('auth.forgotPassword')}
+            </Text>
           </Pressable>
           <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
           <Pressable onPress={() => router.push('/register')} disabled={submitting}>
             <Text className="text-center text-secondary dark:text-accent">
-              Don&apos;t have an account? Register
+              {t('auth.noAccount')}
             </Text>
           </Pressable>
         </Animated.View>

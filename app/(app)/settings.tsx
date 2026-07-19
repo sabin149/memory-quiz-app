@@ -1,26 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { TextField } from '@/components/ui/TextField';
+import { SUPPORTED_LANGUAGES } from '@/lib/i18n';
 import { ThemePreference, useQuizStore } from '@/store';
 import { isValidIntervalDays, TIME_PATTERN } from '@/utils/validation';
 
 const THEME_OPTIONS: {
   value: ThemePreference;
-  label: string;
+  labelKey: string;
   icon: 'phone-portrait-outline' | 'sunny-outline' | 'moon-outline';
 }[] = [
-  { value: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { value: 'light', label: 'Light', icon: 'sunny-outline' },
-  { value: 'dark', label: 'Dark', icon: 'moon-outline' },
+  { value: 'system', labelKey: 'settings.system', icon: 'phone-portrait-outline' },
+  { value: 'light', labelKey: 'settings.light', icon: 'sunny-outline' },
+  { value: 'dark', labelKey: 'settings.dark', icon: 'moon-outline' },
 ];
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, theme, setTheme } = useQuizStore();
+  const { t } = useTranslation();
+  const { settings, updateSettings, theme, setTheme, language, setLanguage } = useQuizStore();
   const router = useRouter();
 
   const [quizInterval, setQuizInterval] = useState(String(settings.quizIntervalDays));
@@ -37,7 +40,7 @@ export default function SettingsScreen() {
 
     // Also reschedules the next quiz reminder notification.
     await updateSettings({ quizIntervalDays: Number(quizInterval), quizTime });
-    Toast.show({ type: 'success', text1: 'Saved', text2: 'Preferences updated.' });
+    Toast.show({ type: 'success', text1: t('common.save'), text2: t('settings.saved') });
     router.back();
   };
 
@@ -47,9 +50,12 @@ export default function SettingsScreen() {
       contentContainerClassName="px-4 py-4 sm:px-6"
     >
       <Card className="mb-4">
-        <Text className="mb-3 font-semibold text-black dark:text-dark-text">Appearance</Text>
+        <Text className="mb-3 font-semibold text-black dark:text-dark-text">
+          {t('settings.appearance')}
+        </Text>
         <View className="flex-row gap-3">
-          {THEME_OPTIONS.map(({ value, label, icon }) => {
+          {THEME_OPTIONS.map(({ value, labelKey, icon }) => {
+            const label = t(labelKey);
             const selected = theme === value;
             return (
               <Pressable
@@ -106,9 +112,40 @@ export default function SettingsScreen() {
       </Card>
 
       <Card className="mb-4">
-        <Text className="mb-3 font-semibold text-black dark:text-dark-text">Quiz reminders</Text>
+        <Text className="mb-3 font-semibold text-black dark:text-dark-text">
+          {t('settings.language')}
+        </Text>
+        <View className="flex-row flex-wrap gap-2">
+          {SUPPORTED_LANGUAGES.map(({ value, label }) => (
+            <Pressable
+              key={value}
+              className={`rounded-full border px-4 py-2 ${
+                language === value
+                  ? 'border-primary bg-primary'
+                  : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+              }`}
+              onPress={() => setLanguage(value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: language === value }}
+            >
+              <Text
+                className={
+                  language === value ? 'font-semibold text-white' : 'text-black dark:text-dark-text'
+                }
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      </Card>
+
+      <Card className="mb-4">
+        <Text className="mb-3 font-semibold text-black dark:text-dark-text">
+          {t('settings.reminders')}
+        </Text>
         <TextField
-          label="Interval (days)"
+          label={t('settings.intervalLabel')}
           placeholder="e.g. 2"
           value={quizInterval}
           onChangeText={setQuizInterval}
@@ -116,13 +153,13 @@ export default function SettingsScreen() {
           keyboardType="number-pad"
         />
         <TextField
-          label="Preferred time (24h)"
+          label={t('settings.timeLabel')}
           placeholder="HH:MM, e.g. 08:00"
           value={quizTime}
           onChangeText={setQuizTime}
           error={timeError}
         />
-        <Button title="Save" icon="save-outline" onPress={handleSave} />
+        <Button title={t('common.save')} icon="save-outline" onPress={handleSave} />
       </Card>
     </ScrollView>
   );

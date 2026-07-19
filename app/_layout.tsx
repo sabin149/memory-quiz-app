@@ -6,6 +6,7 @@ import { colorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
 import { toastConfig } from '@/components/ui/ToastCard';
+import { applyLanguage } from '@/lib/i18n';
 import { initCrashReporting } from '@/lib/sentry';
 import { getCurrentUser } from '@/services/auth';
 import { useQuizStore } from '@/store';
@@ -23,10 +24,15 @@ export default function RootLayout() {
     ...MaterialCommunityIcons.font,
   });
 
-  // Re-applied when the persisted preference finishes rehydrating.
+  const language = useQuizStore((s) => s.language);
+
+  // Re-applied when the persisted preferences finish rehydrating.
   useEffect(() => {
     colorScheme.set(theme);
   }, [theme]);
+  useEffect(() => {
+    applyLanguage(language);
+  }, [language]);
 
   useEffect(() => {
     let cancelled = false;
