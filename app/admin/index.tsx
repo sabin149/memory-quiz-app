@@ -35,12 +35,14 @@ function StatCard({
   return (
     <Card className="mb-3 mr-3 min-w-[150px] flex-1">
       <View className="flex-row items-center">
-        <View className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+        <View className="mr-3 h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
           <Ionicons name={icon} size={20} color="#4B5EAA" />
         </View>
-        <View>
+        <View className="flex-1">
           <Text className="text-2xl font-bold text-primary dark:text-dark-text">{value}</Text>
-          <Text className="text-xs text-gray-500 dark:text-gray-400">{label}</Text>
+          <Text className="text-xs text-gray-500 dark:text-gray-400" numberOfLines={2}>
+            {label}
+          </Text>
         </View>
       </View>
     </Card>

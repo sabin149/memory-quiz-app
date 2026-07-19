@@ -21,12 +21,17 @@ const THEME_OPTIONS: {
   { value: 'dark', labelKey: 'settings.dark', icon: 'moon-outline' },
 ];
 
+const INTERVAL_PRESETS = [1, 2, 3, 7, 14, 30];
+
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const { settings, updateSettings, theme, setTheme, language, setLanguage } = useQuizStore();
   const router = useRouter();
 
   const [quizInterval, setQuizInterval] = useState(String(settings.quizIntervalDays));
+  const [customInterval, setCustomInterval] = useState(
+    !INTERVAL_PRESETS.includes(settings.quizIntervalDays)
+  );
   const [quizTime, setQuizTime] = useState(settings.quizTime);
   const [intervalError, setIntervalError] = useState<string | undefined>();
   const [timeError, setTimeError] = useState<string | undefined>();
@@ -144,14 +149,63 @@ export default function SettingsScreen() {
         <Text className="mb-3 font-semibold text-black dark:text-dark-text">
           {t('settings.reminders')}
         </Text>
-        <TextField
-          label={t('settings.intervalLabel')}
-          placeholder="e.g. 2"
-          value={quizInterval}
-          onChangeText={setQuizInterval}
-          error={intervalError}
-          keyboardType="number-pad"
-        />
+        <Text className="mb-2 text-black dark:text-dark-text">{t('settings.intervalLabel')}</Text>
+        <View className="mb-3 flex-row flex-wrap gap-2">
+          {INTERVAL_PRESETS.map((days) => {
+            const selected = !customInterval && quizInterval === String(days);
+            return (
+              <Pressable
+                key={days}
+                className={`rounded-full border px-4 py-2 ${
+                  selected
+                    ? 'border-primary bg-primary'
+                    : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+                }`}
+                onPress={() => {
+                  setCustomInterval(false);
+                  setQuizInterval(String(days));
+                  setIntervalError(undefined);
+                }}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text
+                  className={selected ? 'font-semibold text-white' : 'text-black dark:text-dark-text'}
+                >
+                  {days}
+                </Text>
+              </Pressable>
+            );
+          })}
+          <Pressable
+            className={`rounded-full border px-4 py-2 ${
+              customInterval
+                ? 'border-primary bg-primary'
+                : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+            }`}
+            onPress={() => setCustomInterval(true)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: customInterval }}
+          >
+            <Text
+              className={customInterval ? 'font-semibold text-white' : 'text-black dark:text-dark-text'}
+            >
+              {t('settings.custom')}
+            </Text>
+          </Pressable>
+        </View>
+        {customInterval && (
+          <TextField
+            placeholder="e.g. 5"
+            value={quizInterval}
+            onChangeText={setQuizInterval}
+            error={intervalError}
+            keyboardType="number-pad"
+          />
+        )}
+        {!customInterval && intervalError && (
+          <Text className="mb-2 text-sm text-red-500">{intervalError}</Text>
+        )}
         <TextField
           label={t('settings.timeLabel')}
           placeholder="HH:MM, e.g. 08:00"

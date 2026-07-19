@@ -142,6 +142,7 @@
     "timePlaceholder": "HH:MM, p. ej. 08:00",
     "timeError": "Usa el formato 24h HH:MM, p. ej. 08:00.",
     "saved": "Guardado",
-    "savedBody": "Preferencias actualizadas."
+    "savedBody": "Preferencias actualizadas.",
+    "custom": "Personalizado"
   }
 }
