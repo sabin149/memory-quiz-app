@@ -22,7 +22,9 @@ const PROVIDERS = {
   },
   gemini: {
     url: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
-    model: 'gemini-2.0-flash',
+    // 2.x models are unavailable/quota-0 for new keys as of 2026; the
+    // free-tier model is the 3-series Flash preview.
+    model: 'gemini-3-flash-preview',
   },
   groq: {
     url: 'https://api.groq.com/openai/v1/chat/completions',
@@ -70,7 +72,10 @@ async function chatCompletion(systemPrompt, userPrompt, jsonMode = true) {
       ],
     }),
   });
-  if (!response.ok) throw new Error(`LLM API returned ${response.status}`);
+  if (!response.ok) {
+    const detail = (await response.text().catch(() => '')).slice(0, 300);
+    throw new Error(`LLM API returned ${response.status}: ${detail}`);
+  }
   const completion = await response.json();
   return completion.choices?.[0]?.message?.content ?? '';
 }
