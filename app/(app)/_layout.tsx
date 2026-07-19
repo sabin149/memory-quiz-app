@@ -13,6 +13,7 @@ export default function AppLayout() {
     if (!user) return;
     trackEvent(user.$id, 'app_opened');
     checkIsAdmin().then((isAdmin) => useQuizStore.getState().setIsAdmin(isAdmin));
+    useQuizStore.getState().hydrateGamification(user.prefs?.gamification);
     (async () => {
       await syncConversations();
       const { settings, lastQuizCompletedAt, dueCount } = useQuizStore.getState();
@@ -30,6 +31,7 @@ export default function AppLayout() {
       <Stack.Screen name="quiz" options={{ title: 'Quiz' }} />
       <Stack.Screen name="edit" options={{ title: 'Review & Save' }} />
       <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+      <Stack.Screen name="stats" options={{ title: 'Your Progress' }} />
     </Stack>
   );
 }

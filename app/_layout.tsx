@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { colorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
 import { getCurrentUser } from '@/services/auth';
@@ -10,6 +11,12 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { authReady, setUser, setAuthReady } = useQuizStore();
+  const theme = useQuizStore((s) => s.theme);
+
+  // Re-applied when the persisted preference finishes rehydrating.
+  useEffect(() => {
+    colorScheme.set(theme);
+  }, [theme]);
 
   useEffect(() => {
     let cancelled = false;

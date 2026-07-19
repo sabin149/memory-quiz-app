@@ -110,6 +110,13 @@ utils/
 - Conversations sync to Appwrite Databases with per-user document permissions; offline changes are cached locally and pushed on the next launch
 - A local notification reminds you to review, honoring the interval (days) and time set in Settings
 
+## Progress & gamification
+
+- **Memory strength meter** on every conversation: decays exponentially since your last review (the SM-2 interval is the half-life) and is restored by quizzing
+- **Daily streak** (survives until a full day is missed), **XP** (+10 per correct answer, +20 perfect bonus) and a quadratic **level curve**
+- **Stats screen**: GitHub-style review heatmap (16 weeks), level progress, achievements
+- Progress syncs across devices via Appwrite account preferences
+
 ## Admin portal
 
 Members of the Appwrite `admins` team see an **Admin portal** entry on the home screen (best experienced on web via `npm run web`):
@@ -131,8 +138,8 @@ Delivered so far:
 - **Phase 2 — Auth complete**: Google + GitHub OAuth (deep-link flow), password reset, email verification, account deactivation, safe user-facing error messages.
 - **Phase 3 — Real quizzes**: conversations synced to Appwrite Databases (per-user permissions); questions generated from conversation content (on-device cloze + optional LLM function); quiz attempts recorded; SM-2 spaced-repetition scheduling with due badges; local notifications honoring the interval/time settings.
 - **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); `/admin` dashboard gated by the Appwrite "admins" team — DAU/WAU, signups, quiz accuracy, activity chart, per-user drill-down.
+- **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by quizzes), daily streaks, XP/levels with progress, achievements, GitHub-style review heatmap, stats screen, cross-device progress sync via account prefs; shared UI kit (Button/Card/EmptyState), working dark mode with a system/light/dark setting, haptic feedback on answers.
 
 Pending:
 
-- **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by correct answers), daily streaks, review heatmap, XP/levels, achievements, daily goal ring; shared component library, working dark mode, micro-interactions, onboarding.
-- **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review.
+- **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review; onboarding flow.

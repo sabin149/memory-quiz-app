@@ -4,16 +4,32 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import ConversationForm from '@/components/ConversationForm';
+import StrengthBar from '@/components/StrengthBar';
+import Button from '@/components/ui/Button';
+import Card from '@/components/ui/Card';
+import EmptyState from '@/components/ui/EmptyState';
 import { logout } from '@/services/auth';
 import { useQuizStore } from '@/store';
+import { computeStreak, levelFromXp } from '@/utils/gamification';
 import { isDue } from '@/utils/sm2';
 
 export default function HomeScreen() {
-  const { conversations, tagConversation, removeConversation, setUser, remoteAvailable, isAdmin } =
-    useQuizStore();
+  const {
+    conversations,
+    tagConversation,
+    removeConversation,
+    clearUserData,
+    remoteAvailable,
+    isAdmin,
+    gamification,
+  } = useQuizStore();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  const streak = computeStreak(gamification.activity);
+  const level = levelFromXp(gamification.totalXp);
+  const dueCount = conversations.filter((c) => isDue(c.memory)).length;
 
   const handleDocumentPick = async () => {
     setUploading(true);
@@ -52,7 +68,7 @@ export default function HomeScreen() {
     } catch {
       // Session may already be invalid server-side; clear local state regardless.
     } finally {
-      setUser(null);
+      clearUserData();
       setSigningOut(false);
     }
   };
@@ -71,88 +87,94 @@ export default function HomeScreen() {
           Offline — changes are saved on this device and sync when the backend is reachable.
         </Text>
       )}
-      <ConversationForm />
-      <Pressable
-        className={`mb-4 rounded-lg p-3 ${uploading ? 'bg-green-500/60' : 'bg-green-500'}`}
-        onPress={handleDocumentPick}
-        disabled={uploading}
-      >
-        <Text className="text-center font-semibold text-white">
-          {uploading ? 'Reading file…' : 'Upload a text file'}
-        </Text>
+
+      <Pressable onPress={() => router.push('/stats')}>
+        <Card className="mb-4 flex-row items-center justify-between py-3">
+          <Text className="font-semibold text-black dark:text-dark-text">
+            {streak}🔥 streak · Lv {level.level} · {gamification.totalXp} XP
+          </Text>
+          <Text className="text-sm text-secondary dark:text-accent">
+            {dueCount > 0 ? `${dueCount} due →` : 'Progress →'}
+          </Text>
+        </Card>
       </Pressable>
+
+      <ConversationForm />
+      <Button
+        title={uploading ? 'Reading file…' : 'Upload a text file'}
+        variant="success"
+        onPress={handleDocumentPick}
+        loading={uploading}
+        className="mb-4"
+      />
       <FlatList
         data={conversations}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
-          <View className="mb-2 flex-row items-center justify-between rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-            <View className="mr-2 flex-1">
-              <Text className="text-lg text-black dark:text-dark-text" numberOfLines={1}>
-                {item.title}
-              </Text>
-              {isDue(item.memory) ? (
-                <Text className="text-xs font-semibold text-orange-500">Due for review</Text>
-              ) : (
-                item.memory.lastScorePct != null && (
-                  <Text className="text-xs text-gray-500 dark:text-gray-400">
-                    Last score {item.memory.lastScorePct}%
-                  </Text>
-                )
-              )}
+          <Card className="mb-2">
+            <View className="flex-row items-center justify-between">
+              <View className="mr-2 flex-1">
+                <Text className="text-lg text-black dark:text-dark-text" numberOfLines={1}>
+                  {item.title}
+                </Text>
+                {isDue(item.memory) && (
+                  <Text className="text-xs font-semibold text-orange-500">Due for review</Text>
+                )}
+              </View>
+              <View className="flex-row gap-2">
+                <Pressable
+                  className={`rounded-lg p-2 ${item.tagged ? 'bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                  onPress={() => tagConversation(item.id)}
+                >
+                  <Text className="text-white">{item.tagged ? 'Untag' : 'Tag'}</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-lg bg-blue-500 p-2"
+                  onPress={() =>
+                    router.push({ pathname: '/quiz', params: { conversationId: item.id } })
+                  }
+                >
+                  <Text className="text-white">Quiz</Text>
+                </Pressable>
+                <Pressable
+                  className="rounded-lg bg-red-400 p-2"
+                  onPress={() => confirmDelete(item.id, item.title)}
+                >
+                  <Text className="text-white">Delete</Text>
+                </Pressable>
+              </View>
             </View>
-            <View className="flex-row gap-2">
-              <Pressable
-                className={`rounded-lg p-2 ${item.tagged ? 'bg-yellow-500' : 'bg-gray-300'}`}
-                onPress={() => tagConversation(item.id)}
-              >
-                <Text className="text-white">{item.tagged ? 'Untag' : 'Tag'}</Text>
-              </Pressable>
-              <Pressable
-                className="rounded-lg bg-blue-500 p-2"
-                onPress={() =>
-                  router.push({ pathname: '/quiz', params: { conversationId: item.id } })
-                }
-              >
-                <Text className="text-white">Quiz</Text>
-              </Pressable>
-              <Pressable
-                className="rounded-lg bg-red-400 p-2"
-                onPress={() => confirmDelete(item.id, item.title)}
-              >
-                <Text className="text-white">Delete</Text>
-              </Pressable>
-            </View>
-          </View>
+            <StrengthBar memory={item.memory} />
+          </Card>
         )}
         ListEmptyComponent={
-          <Text className="mt-8 text-center text-gray-500 dark:text-gray-400">
-            No conversations yet. Add one above or upload a file.
-          </Text>
+          <EmptyState
+            title="No conversations yet."
+            hint="Add one above or upload a text file — then quiz yourself on it."
+          />
         }
       />
-      <Pressable
-        className="mt-4 rounded-lg bg-secondary p-3"
+      <Button
+        title="Settings"
+        variant="secondary"
         onPress={() => router.push('/settings')}
-      >
-        <Text className="text-center font-semibold text-white">Settings</Text>
-      </Pressable>
+        className="mt-4"
+      />
       {isAdmin && (
         <Pressable
-          className="mt-4 rounded-lg bg-purple-600 p-3"
+          className="mt-4 rounded-lg bg-purple-600 p-3 active:opacity-80"
           onPress={() => router.push('/admin')}
         >
           <Text className="text-center font-semibold text-white">Admin portal</Text>
         </Pressable>
       )}
-      <Pressable
-        className={`mt-4 rounded-lg p-3 ${signingOut ? 'bg-red-500/60' : 'bg-red-500'}`}
+      <Button
+        title={signingOut ? 'Logging out…' : 'Logout'}
+        variant="danger"
         onPress={handleLogout}
-        disabled={signingOut}
-      >
-        <Text className="text-center font-semibold text-white">
-          {signingOut ? 'Logging out…' : 'Logout'}
-        </Text>
-      </Pressable>
+        loading={signingOut}
+        className="mt-4"
+      />
     </View>
   );
 }

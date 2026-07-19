@@ -1,17 +1,23 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   deactivateAccount,
   sendVerificationEmail,
   toAuthErrorMessage,
 } from '@/services/auth';
-import { useQuizStore } from '@/store';
+import { ThemePreference, useQuizStore } from '@/store';
 import { isValidIntervalDays, TIME_PATTERN } from '@/utils/validation';
 
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 export default function SettingsScreen() {
-  const { settings, updateSettings, user, setUser } = useQuizStore();
+  const { settings, updateSettings, user, clearUserData, theme, setTheme } = useQuizStore();
   const router = useRouter();
 
   const [quizInterval, setQuizInterval] = useState(String(settings.quizIntervalDays));
@@ -65,7 +71,7 @@ export default function SettingsScreen() {
             setDeleting(true);
             try {
               await deactivateAccount();
-              setUser(null);
+              clearUserData();
             } catch (error) {
               Toast.show({
                 type: 'error',
@@ -103,6 +109,25 @@ export default function SettingsScreen() {
           </Text>
         </Pressable>
       )}
+
+      <Text className="mb-1 text-black dark:text-dark-text">Appearance</Text>
+      <View className="mb-4 flex-row overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+        {THEME_OPTIONS.map(({ value, label }) => (
+          <Pressable
+            key={value}
+            className={`flex-1 p-3 ${theme === value ? 'bg-primary' : 'bg-white dark:bg-gray-800'}`}
+            onPress={() => setTheme(value)}
+          >
+            <Text
+              className={`text-center ${
+                theme === value ? 'font-semibold text-white' : 'text-black dark:text-dark-text'
+              }`}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       <Text className="mb-1 text-black dark:text-dark-text">Quiz interval (days)</Text>
       <TextInput

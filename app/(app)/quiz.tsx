@@ -1,8 +1,17 @@
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import { generateQuiz } from '@/services/quiz';
 import { useQuizStore } from '@/store';
+import { xpForQuiz } from '@/utils/gamification';
+
+function answerFeedback(correct: boolean) {
+  if (Platform.OS === 'web') return;
+  Haptics.notificationAsync(
+    correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
+  ).catch(() => {});
+}
 
 export default function QuizScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
@@ -87,7 +96,8 @@ export default function QuizScreen() {
           Quiz complete
         </Text>
         <Text className="mb-2 text-center text-lg text-black dark:text-dark-text">
-          You got {correct} of {total} right — {quiz.score} points
+          You got {correct} of {total} right — +{xpForQuiz(correct, total)} XP
+          {correct === total ? ' (perfect bonus!)' : ''}
         </Text>
         {nextReview && (
           <Text className="mb-6 text-center text-gray-500 dark:text-gray-400">
@@ -128,7 +138,10 @@ export default function QuizScreen() {
         <Pressable
           key={index}
           className={`mb-2 rounded-lg p-3 ${optionStyle(index)}`}
-          onPress={() => answerQuestion(index)}
+          onPress={() => {
+            answerFeedback(index === question.correct);
+            answerQuestion(index);
+          }}
           disabled={answered}
         >
           <Text className="text-center text-white">{option}</Text>
