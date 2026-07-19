@@ -85,7 +85,9 @@ export async function generateQuiz(request: QuizRequest): Promise<GeneratedQuiz>
     return { questions: generateClozeQuiz(request.content, request.count) };
   }
   throw new Error(
-    'AI quiz generation is not configured. Deploy functions/generate-quiz and set EXPO_PUBLIC_APPWRITE_QUIZ_FUNCTION_ID.'
+    QUIZ_FUNCTION_ID
+      ? 'AI generation failed. Check the generate-quiz function: is the latest code deployed and AI_API_KEY set in ITS environment variables (not the site\u2019s)? See its Executions tab for the error.'
+      : 'AI quiz generation is not configured. Deploy functions/generate-quiz and set EXPO_PUBLIC_APPWRITE_QUIZ_FUNCTION_ID.'
   );
 }
 
