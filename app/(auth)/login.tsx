@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import OAuthButtons from '@/components/OAuthButtons';
+import { trackEvent } from '@/services/analytics';
 import { login, toAuthErrorMessage } from '@/services/auth';
 import { useQuizStore } from '@/store';
 import { EMAIL_PATTERN } from '@/utils/validation';
@@ -37,6 +38,7 @@ export default function LoginScreen() {
     setSubmitting(true);
     try {
       const user = await login(data.email.trim(), data.password);
+      trackEvent(user.$id, 'login');
       setUser(user);
       router.replace('/home');
     } catch (error) {

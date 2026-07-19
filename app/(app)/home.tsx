@@ -9,7 +9,7 @@ import { useQuizStore } from '@/store';
 import { isDue } from '@/utils/sm2';
 
 export default function HomeScreen() {
-  const { conversations, tagConversation, removeConversation, setUser, remoteAvailable } =
+  const { conversations, tagConversation, removeConversation, setUser, remoteAvailable, isAdmin } =
     useQuizStore();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
@@ -136,6 +136,14 @@ export default function HomeScreen() {
       >
         <Text className="text-center font-semibold text-white">Settings</Text>
       </Pressable>
+      {isAdmin && (
+        <Pressable
+          className="mt-4 rounded-lg bg-purple-600 p-3"
+          onPress={() => router.push('/admin')}
+        >
+          <Text className="text-center font-semibold text-white">Admin portal</Text>
+        </Pressable>
+      )}
       <Pressable
         className={`mt-4 rounded-lg p-3 ${signingOut ? 'bg-red-500/60' : 'bg-red-500'}`}
         onPress={handleLogout}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { trackEvent } from '@/services/analytics';
 import {
   loginWithOAuth,
   OAuthProviderKey,
@@ -26,6 +27,7 @@ export default function OAuthButtons({ onLoggedIn, disabled }: OAuthButtonsProps
     try {
       const user = await loginWithOAuth(provider);
       if (user) {
+        trackEvent(user.$id, 'oauth_login');
         onLoggedIn(user);
       }
     } catch (error) {

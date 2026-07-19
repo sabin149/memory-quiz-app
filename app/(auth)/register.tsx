@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import OAuthButtons from '@/components/OAuthButtons';
+import { trackEvent } from '@/services/analytics';
 import { register, sendVerificationEmail, toAuthErrorMessage } from '@/services/auth';
 import { useQuizStore } from '@/store';
 import { EMAIL_PATTERN } from '@/utils/validation';
@@ -41,6 +42,7 @@ export default function RegisterScreen() {
     setSubmitting(true);
     try {
       const user = await register(data.name.trim(), data.email.trim(), data.password);
+      trackEvent(user.$id, 'register');
       // Best effort; the user can resend from Settings if delivery fails.
       sendVerificationEmail().catch(() => {});
       setUser(user);

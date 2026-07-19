@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { User } from '@/services/auth';
+import { trackEvent } from '@/services/analytics';
 import {
   createRemoteConversation,
   deleteRemoteConversation,
@@ -59,6 +60,8 @@ const EMPTY_QUIZ: QuizState = {
 interface AppState {
   user: User | null;
   authReady: boolean;
+  /** Member of the Appwrite "admins" team; unlocks the admin portal. */
+  isAdmin: boolean;
   conversations: Conversation[];
   /** Remote ids deleted locally while the backend was unreachable. */
   pendingDeletes: string[];
@@ -69,6 +72,7 @@ interface AppState {
   settings: Settings;
   setUser: (user: User | null) => void;
   setAuthReady: (ready: boolean) => void;
+  setIsAdmin: (isAdmin: boolean) => void;
   /** Pulls remote conversations and pushes local-only changes. */
   syncConversations: () => Promise<void>;
   addConversation: (input: { title: string; content: string }) => Promise<void>;
@@ -89,6 +93,7 @@ export const useQuizStore = create<AppState>()(
     (set, get) => ({
       user: null,
       authReady: false,
+      isAdmin: false,
       conversations: [],
       pendingDeletes: [],
       remoteAvailable: false,
@@ -96,8 +101,9 @@ export const useQuizStore = create<AppState>()(
       quiz: EMPTY_QUIZ,
       settings: { quizIntervalDays: 2, quizTime: '08:00' },
 
-      setUser: (user) => set({ user }),
+      setUser: (user) => set(user ? { user } : { user: null, isAdmin: false }),
       setAuthReady: (authReady) => set({ authReady }),
+      setIsAdmin: (isAdmin) => set({ isAdmin }),
 
       syncConversations: async () => {
         const { user, conversations, pendingDeletes } = get();
@@ -139,6 +145,7 @@ export const useQuizStore = create<AppState>()(
         set((state) => ({ conversations: [local, ...state.conversations] }));
 
         if (!user) return;
+        trackEvent(user.$id, 'conversation_created');
         try {
           const remote = await createRemoteConversation(local, user.$id);
           set((state) => ({
@@ -152,6 +159,8 @@ export const useQuizStore = create<AppState>()(
       },
 
       removeConversation: (id) => {
+        const { user } = get();
+        if (user) trackEvent(user.$id, 'conversation_deleted');
         const target = get().conversations.find((c) => c.id === id);
         set((state) => ({
           conversations: state.conversations.filter((c) => c.id !== id),
@@ -246,15 +255,20 @@ export const useQuizStore = create<AppState>()(
           lastQuizCompletedAt: completedAt,
         }));
 
-        if (user && target.synced) {
-          updateRemoteMemory(conversationId, memory).catch(() => {});
-          recordQuizAttempt(user.$id, conversationId, correct, total).catch(() => {});
+        if (user) {
+          trackEvent(user.$id, 'quiz_completed');
+          if (target.synced) {
+            updateRemoteMemory(conversationId, memory).catch(() => {});
+            recordQuizAttempt(user.$id, conversationId, correct, total).catch(() => {});
+          }
         }
 
         await scheduleQuizReminder(settings, completedAt, get().dueCount());
       },
 
       updateSettings: async (settings) => {
+        const { user } = get();
+        if (user) trackEvent(user.$id, 'settings_updated');
         set({ settings });
         await scheduleQuizReminder(settings, get().lastQuizCompletedAt, get().dueCount());
       },
