@@ -16,6 +16,96 @@ Memory Quiz App closes that gap:
 
 You don't write flashcards. You save what you learned, and the app fights the forgetting curve for you.
 
+## Features, screen by screen
+
+### Onboarding (`/onboarding`)
+- Three-slide first-run introduction (the forgetting curve → capture → scheduled quizzes) with icons, slide indicators, and skip
+- Shown once; a persisted flag skips it on later launches
+
+### Login (`/login`)
+- Email/password login with zod field validation and inline errors
+- Password show/hide toggle
+- Server errors mapped to the offending field (e.g. wrong credentials under the password input)
+- Google and GitHub OAuth buttons (deep-link token flow)
+- Links to registration and password reset
+
+### Register (`/register`)
+- First name, last name, phone with country-code picker (25 countries), email, password + confirm — all zod-validated inline
+- Duplicate-email (409) shown directly under the email field
+- Sends a verification email automatically and routes to the verification gate
+- OAuth sign-up buttons and a privacy-policy link
+
+### Verify email gate (`/verify-pending`, `/verify-email`)
+- Unverified accounts cannot enter the app: gate screen with resend, "I've verified — continue" re-check, and logout
+- `/verify-email` handles the emailed link (deep link on native, site URL on web) and confirms the address
+
+### Forgot / reset password (`/forgot-password`, `/reset-password`)
+- Enumeration-safe request flow (never reveals whether an email exists)
+- Emailed link opens the in-app reset screen (validated new password + confirm)
+
+### Library (home tab)
+- Compact stats strip: streak, level, XP, and due-count badge → taps through to Progress
+- Full-text search across titles and content
+- Add (`+`) and upload-`.txt` actions
+- Conversation cards: title, saved date, word count, tagged marker, due badge, and an animated **memory-strength bar** (decays over time, refills when you quiz)
+- Offline banner when the backend is unreachable; local changes sync on next launch
+
+### Add conversation (`/edit`)
+- Blank note/paste form, or pre-filled from an uploaded text file (title derived from filename)
+- Validated title + content; saves locally first, then syncs to Appwrite
+
+### Conversation detail (`/conversation/[id]`)
+- Full content, saved date, word count, sync status
+- Memory strength with last-quiz score and next-review date; due badge
+- Tag/untag and delete (with confirmation)
+- Quiz setup: difficulty (easy/medium/hard) and question count (5/10/15) → start
+
+### Quiz (`/quiz`)
+- Questions generated from the source content (AI function when configured, on-device generator as fallback)
+- One question at a time with slide-in transitions; answered options lock; correct answer highlighted green, wrong pick red, with check/cross icons and haptic feedback on phones
+- Results screen: score, XP earned (+perfect bonus), next scheduled review date, retry
+- Completing a quiz updates the SM-2 schedule, records the attempt, XP, streak, and reschedules the reminder notification
+
+### Practice tab
+- Ad-hoc AI quizzes without saving anything: enter a **topic** or a **public URL** (fetched and cleaned server-side), pick difficulty and question count, generate
+- Earns XP and streak but creates no review schedule (explained in-app)
+- Shows a setup notice when the AI function isn't configured
+
+### Progress tab (`/stats`)
+- Streak / level / total XP cards with icons
+- Animated level progress bar (quadratic XP curve)
+- GitHub-style 16-week review heatmap
+- Quiz totals (completed, perfect, mastered conversations)
+- 8 achievements with locked/unlocked states
+
+### Profile tab
+- Avatar initial, name, email, verification status (with resend link)
+- Streak / level / saved-count summary
+- Links: reminder & appearance preferences, progress, privacy policy, admin portal (admins only)
+- Log out and delete account (deactivation with destructive confirmation)
+
+### Preferences (`/settings`)
+- Appearance: System / Light / Dark (persisted; dark mode fully functional)
+- Quiz reminders: interval in days (1–365) and preferred time (24h HH:MM), validated; saving reschedules the local notification
+
+### Privacy policy (`/privacy`)
+- What's stored, privacy-safe analytics, AI generation, crash reporting, and user controls
+
+### Admin portal (`/admin` — visible only to the Appwrite `admins` team, server-verified)
+- **Dashboard**: DAU/WAU, signups, quizzes, average accuracy, content volume (7d KPI cards with icons); 14-day events-vs-quizzes line chart; per-day accuracy bar chart; event-type breakdown
+- **Users**: per-user activity summaries (last active, events, quizzes, average score) with id filter and pagination
+- **User drill-down**: event timeline (names + timestamps only)
+- Privacy-safe by design: analytics store event name + user id + timestamp — never content or emails
+
+### Cross-cutting
+- Appwrite backend: per-user document permissions (nobody can read another user's content, admins included)
+- Offline-first local cache with background sync and pending-delete retry
+- Cross-device progress sync via account prefs (replay-safe merge)
+- Local notification reminders honoring interval/time preferences
+- Native-styled toasts, vector icons everywhere, entrance/transition animations
+- Accessibility: roles, labels, and selected-states on interactive controls
+- Opt-in Sentry crash reporting with PII stripped
+
 ## Tech stack
 
 Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.expo.dev/router/introduction/), [NativeWind](https://www.nativewind.dev/), [Zustand](https://zustand.docs.pmnd.rs/), and [Appwrite](https://appwrite.io) as the backend (auth, database, serverless functions).
