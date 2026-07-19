@@ -94,6 +94,22 @@ utils/
   validation.ts            # Shared validation patterns
 ```
 
+## Docker
+
+No local Node setup needed — three services in `docker-compose.yml`:
+
+```bash
+docker compose up expo-tunnel   # dev server; QR works from any network (recommended)
+docker compose up expo-dev      # dev server, LAN mode (set HOST_LAN_IP=<your ip>)
+docker compose up web           # production web build on http://localhost:8080
+```
+
+Expo Go + Docker: use `expo-tunnel`. LAN mode requires the phone to reach this
+machine directly, which corporate networks often block; the tunnel only makes
+outbound connections, so its QR code is scannable from anywhere. The `web`
+service serves plain HTTP for local testing only — in production, deploy the
+export behind a TLS-terminating platform (e.g. Appwrite Sites).
+
 ## Testing & CI
 
 - `npm test` runs 42 Jest tests (SM-2 scheduling, quiz generation, gamification, admin aggregations, validation, UI components) with the `jest-expo` preset.
