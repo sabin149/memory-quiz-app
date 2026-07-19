@@ -20,7 +20,7 @@ export default function SettingsScreen() {
   const [sendingVerification, setSendingVerification] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isValidIntervalDays(quizInterval)) {
       setErrorText('Quiz interval must be a whole number between 1 and 365 days.');
       return;
@@ -30,7 +30,8 @@ export default function SettingsScreen() {
       return;
     }
     setErrorText(null);
-    updateSettings({ quizIntervalDays: Number(quizInterval), quizTime });
+    // Also reschedules the next quiz reminder notification.
+    await updateSettings({ quizIntervalDays: Number(quizInterval), quizTime });
     Toast.show({ type: 'success', text1: 'Saved', text2: 'Settings updated.' });
     router.back();
   };

@@ -2,6 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { User } from '@/services/auth';
+import {
+  createRemoteConversation,
+  deleteRemoteConversation,
+  fetchRemoteConversations,
+  isRemoteUnavailable,
+  recordQuizAttempt,
+  updateRemoteMemory,
+  updateRemoteTag,
+} from '@/services/conversations';
+import { scheduleQuizReminder } from '@/services/notifications';
+import { initialMemory, isDue, MemoryState, reviewMemory } from '@/utils/sm2';
 
 export interface Conversation {
   id: string;
@@ -9,6 +20,9 @@ export interface Conversation {
   content: string;
   tagged: boolean;
   createdAt: string;
+  /** True once the conversation exists in Appwrite (id is the document id). */
+  synced: boolean;
+  memory: MemoryState;
 }
 
 export interface QuizQuestion {
@@ -42,64 +56,138 @@ const EMPTY_QUIZ: QuizState = {
   questions: [],
 };
 
-// Placeholder question set until content-based generation lands (Phase 3).
-const SAMPLE_QUESTIONS: QuizQuestion[] = [
-  {
-    question: 'What is the main topic?',
-    options: ['AI', 'Math', 'History', 'Science'],
-    correct: 0,
-  },
-  {
-    question: 'What does AI stand for?',
-    options: ['Artificial Intelligence', 'Automated Interaction', 'Advanced Interface', 'None'],
-    correct: 0,
-  },
-];
-
 interface AppState {
   user: User | null;
   authReady: boolean;
   conversations: Conversation[];
+  /** Remote ids deleted locally while the backend was unreachable. */
+  pendingDeletes: string[];
+  /** False when Appwrite Databases is unreachable or not provisioned. */
+  remoteAvailable: boolean;
+  lastQuizCompletedAt: string | null;
   quiz: QuizState;
   settings: Settings;
   setUser: (user: User | null) => void;
   setAuthReady: (ready: boolean) => void;
-  addConversation: (conversation: Conversation) => void;
+  /** Pulls remote conversations and pushes local-only changes. */
+  syncConversations: () => Promise<void>;
+  addConversation: (input: { title: string; content: string }) => Promise<void>;
   removeConversation: (id: string) => void;
   tagConversation: (id: string) => void;
-  startQuiz: (conversationId: string) => void;
+  startQuiz: (conversationId: string, questions: QuizQuestion[]) => void;
   answerQuestion: (selected: number) => void;
   nextQuestion: () => void;
   resetQuiz: () => void;
-  updateSettings: (settings: Settings) => void;
+  /** Applies SM-2 to the conversation and reschedules the reminder. */
+  applyQuizResult: (conversationId: string, correct: number, total: number) => Promise<void>;
+  updateSettings: (settings: Settings) => Promise<void>;
+  dueCount: () => number;
 }
 
 export const useQuizStore = create<AppState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       authReady: false,
       conversations: [],
+      pendingDeletes: [],
+      remoteAvailable: false,
+      lastQuizCompletedAt: null,
       quiz: EMPTY_QUIZ,
       settings: { quizIntervalDays: 2, quizTime: '08:00' },
 
       setUser: (user) => set({ user }),
       setAuthReady: (authReady) => set({ authReady }),
 
-      addConversation: (conversation) =>
-        set((state) => ({ conversations: [conversation, ...state.conversations] })),
+      syncConversations: async () => {
+        const { user, conversations, pendingDeletes } = get();
+        if (!user) return;
+        try {
+          for (const id of pendingDeletes) {
+            await deleteRemoteConversation(id);
+          }
+          // Push conversations created while offline, then pull everything.
+          for (const conversation of conversations.filter((c) => !c.synced)) {
+            await createRemoteConversation(conversation, user.$id);
+          }
+          const remote = await fetchRemoteConversations(user.$id);
+          set({
+            conversations: remote.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+            pendingDeletes: [],
+            remoteAvailable: true,
+          });
+        } catch (error) {
+          if (isRemoteUnavailable(error)) {
+            set({ remoteAvailable: false });
+          } else {
+            console.warn('Conversation sync failed', error);
+          }
+        }
+      },
 
-      removeConversation: (id) =>
-        set((state) => ({ conversations: state.conversations.filter((c) => c.id !== id) })),
+      addConversation: async (input) => {
+        const { user } = get();
+        const local: Conversation = {
+          id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          title: input.title,
+          content: input.content,
+          tagged: false,
+          createdAt: new Date().toISOString(),
+          synced: false,
+          memory: initialMemory(),
+        };
+        set((state) => ({ conversations: [local, ...state.conversations] }));
 
-      tagConversation: (id) =>
+        if (!user) return;
+        try {
+          const remote = await createRemoteConversation(local, user.$id);
+          set((state) => ({
+            conversations: state.conversations.map((c) => (c.id === local.id ? remote : c)),
+            remoteAvailable: true,
+          }));
+        } catch (error) {
+          if (isRemoteUnavailable(error)) set({ remoteAvailable: false });
+          else console.warn('Failed to push conversation', error);
+        }
+      },
+
+      removeConversation: (id) => {
+        const target = get().conversations.find((c) => c.id === id);
         set((state) => ({
-          conversations: state.conversations.map((c) =>
-            c.id === id ? { ...c, tagged: !c.tagged } : c
-          ),
-        })),
+          conversations: state.conversations.filter((c) => c.id !== id),
+          pendingDeletes:
+            target?.synced && !state.pendingDeletes.includes(id)
+              ? [...state.pendingDeletes, id]
+              : state.pendingDeletes,
+        }));
+        if (target?.synced) {
+          deleteRemoteConversation(id)
+            .then(() =>
+              set((state) => ({
+                pendingDeletes: state.pendingDeletes.filter((d) => d !== id),
+              }))
+            )
+            .catch(() => {
+              // Stays in pendingDeletes; retried on next sync.
+            });
+        }
+      },
 
-      startQuiz: (conversationId) =>
+      tagConversation: (id) => {
+        const target = get().conversations.find((c) => c.id === id);
+        if (!target) return;
+        const tagged = !target.tagged;
+        set((state) => ({
+          conversations: state.conversations.map((c) => (c.id === id ? { ...c, tagged } : c)),
+        }));
+        if (target.synced) {
+          updateRemoteTag(id, tagged).catch(() => {
+            // Local state is the user's intent; retried implicitly on next sync.
+          });
+        }
+      },
+
+      startQuiz: (conversationId, questions) =>
         set({
           quiz: {
             conversationId,
@@ -107,7 +195,7 @@ export const useQuizStore = create<AppState>()(
             currentQuestion: 0,
             score: 0,
             answers: [],
-            questions: SAMPLE_QUESTIONS,
+            questions,
           },
         }),
 
@@ -142,7 +230,36 @@ export const useQuizStore = create<AppState>()(
 
       resetQuiz: () => set({ quiz: EMPTY_QUIZ }),
 
-      updateSettings: (settings) => set({ settings }),
+      applyQuizResult: async (conversationId, correct, total) => {
+        const { user, conversations, settings } = get();
+        const target = conversations.find((c) => c.id === conversationId);
+        if (!target || total === 0) return;
+
+        const scorePct = Math.round((correct / total) * 100);
+        const memory = reviewMemory(target.memory, scorePct);
+        const completedAt = new Date().toISOString();
+
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === conversationId ? { ...c, memory } : c
+          ),
+          lastQuizCompletedAt: completedAt,
+        }));
+
+        if (user && target.synced) {
+          updateRemoteMemory(conversationId, memory).catch(() => {});
+          recordQuizAttempt(user.$id, conversationId, correct, total).catch(() => {});
+        }
+
+        await scheduleQuizReminder(settings, completedAt, get().dueCount());
+      },
+
+      updateSettings: async (settings) => {
+        set({ settings });
+        await scheduleQuizReminder(settings, get().lastQuizCompletedAt, get().dueCount());
+      },
+
+      dueCount: () => get().conversations.filter((c) => isDue(c.memory)).length,
     }),
     {
       name: 'memory-quiz-store',
@@ -150,8 +267,25 @@ export const useQuizStore = create<AppState>()(
       // user/session is owned by Appwrite; quiz progress is transient
       partialize: (state) => ({
         conversations: state.conversations,
+        pendingDeletes: state.pendingDeletes,
+        lastQuizCompletedAt: state.lastQuizCompletedAt,
         settings: state.settings,
       }),
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
+        // v1 conversations lack memory/synced fields; backfill them.
+        const state = persisted as {
+          conversations?: (Partial<Conversation> & { id: string })[];
+        } & Record<string, unknown>;
+        if (version < 2 && Array.isArray(state?.conversations)) {
+          state.conversations = state.conversations.map((c) => ({
+            ...c,
+            synced: c.synced ?? false,
+            memory: c.memory ?? initialMemory(),
+          }));
+        }
+        return state;
+      },
     }
   )
 );

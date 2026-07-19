@@ -6,9 +6,11 @@ import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import ConversationForm from '@/components/ConversationForm';
 import { logout } from '@/services/auth';
 import { useQuizStore } from '@/store';
+import { isDue } from '@/utils/sm2';
 
 export default function HomeScreen() {
-  const { conversations, tagConversation, removeConversation, setUser } = useQuizStore();
+  const { conversations, tagConversation, removeConversation, setUser, remoteAvailable } =
+    useQuizStore();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -64,6 +66,11 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-background px-4 py-6 dark:bg-dark-bg sm:px-6">
+      {!remoteAvailable && (
+        <Text className="mb-2 text-center text-xs text-gray-500 dark:text-gray-400">
+          Offline — changes are saved on this device and sync when the backend is reachable.
+        </Text>
+      )}
       <ConversationForm />
       <Pressable
         className={`mb-4 rounded-lg p-3 ${uploading ? 'bg-green-500/60' : 'bg-green-500'}`}
@@ -79,12 +86,20 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View className="mb-2 flex-row items-center justify-between rounded-lg bg-white p-4 shadow dark:bg-gray-800">
-            <Text
-              className="mr-2 flex-1 text-lg text-black dark:text-dark-text"
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
+            <View className="mr-2 flex-1">
+              <Text className="text-lg text-black dark:text-dark-text" numberOfLines={1}>
+                {item.title}
+              </Text>
+              {isDue(item.memory) ? (
+                <Text className="text-xs font-semibold text-orange-500">Due for review</Text>
+              ) : (
+                item.memory.lastScorePct != null && (
+                  <Text className="text-xs text-gray-500 dark:text-gray-400">
+                    Last score {item.memory.lastScorePct}%
+                  </Text>
+                )
+              )}
+            </View>
             <View className="flex-row gap-2">
               <Pressable
                 className={`rounded-lg p-2 ${item.tagged ? 'bg-yellow-500' : 'bg-gray-300'}`}

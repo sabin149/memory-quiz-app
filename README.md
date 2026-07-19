@@ -42,7 +42,15 @@ Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.e
    - **iOS**: bundle ID `com.mycompany.memoryquizapp`
    - **Web**: hostname `localhost` (for `expo start --web` development)
 
-3. Start the app:
+3. Provision the database (once per project). Create an API key in the Appwrite console (scope: `databases.write`) and run:
+
+   ```bash
+   APPWRITE_API_KEY=<server-key> node scripts/setup-appwrite.mjs
+   ```
+
+   This creates the `memoryquiz` database with `conversations` and `quiz_attempts` collections (document-level permissions — users can only ever read their own data). Until it runs, the app still works fully offline from the local cache.
+
+4. Start the app:
 
    ```bash
    npm start          # then press a / i / w
@@ -64,15 +72,24 @@ Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.e
 
 ```
 app/
-  _layout.tsx        # Root layout: session restore, splash, toast host
-  index.tsx          # Redirects to /home or /login
-  (auth)/            # Public routes (login, register, password reset, verification)
-  (app)/             # Authenticated routes (home, quiz, edit, settings)
-components/          # Shared UI components
-lib/appwrite.ts      # Appwrite client singleton
-services/auth.ts     # Auth API (register, login, OAuth, recovery, verification)
-store/index.ts       # Zustand store (persisted: conversations + settings)
-utils/validation.ts  # Shared validation patterns
+  _layout.tsx              # Root layout: session restore, splash, toast host
+  index.tsx                # Redirects to /home or /login
+  (auth)/                  # Public routes (login, register, password reset)
+  (app)/                   # Authenticated routes (home, quiz, edit, settings)
+components/                # Shared UI components
+functions/generate-quiz/   # Optional Appwrite Function for LLM quiz generation
+lib/appwrite.ts            # Appwrite client + database/collection ids
+scripts/setup-appwrite.mjs # One-time database provisioning (needs API key)
+services/
+  auth.ts                  # Register, login, OAuth, recovery, verification
+  conversations.ts         # Conversation + quiz-attempt CRUD (Appwrite Databases)
+  quiz.ts                  # Quiz generation (LLM function -> local fallback)
+  notifications.ts         # Local quiz reminder scheduling
+store/index.ts             # Zustand store (persisted cache; Appwrite is source of truth)
+utils/
+  quizGenerator.ts         # On-device cloze question generation
+  sm2.ts                   # SM-2 spaced-repetition algorithm
+  validation.ts            # Shared validation patterns
 ```
 
 ## Auth
@@ -83,16 +100,25 @@ utils/validation.ts  # Shared validation patterns
 - Account deactivation from Settings
 - Sessions restored on app launch; route groups guard authenticated screens
 
+## Quizzes & spaced repetition
+
+- Questions are generated from the conversation's own content:
+  - **Default**: on-device cloze deletion (fill-in-the-blank multiple choice) — free, offline
+  - **Optional**: LLM generation via the `functions/generate-quiz` Appwrite Function (see its README); the app falls back to on-device generation automatically
+- Each quiz result feeds an SM-2 spaced-repetition schedule per conversation; the home screen shows what's due for review
+- Conversations sync to Appwrite Databases with per-user document permissions; offline changes are cached locally and pushed on the next launch
+- A local notification reminds you to review, honoring the interval (days) and time set in Settings
+
 ## Status & roadmap
 
 Delivered so far:
 
 - **Phase 1 — Foundation**: real Appwrite email/password auth with session restore, route-group auth guards, local persistence (conversations + settings survive restarts), quiz flow fixes, input validation, dead code removed.
 - **Phase 2 — Auth complete**: Google + GitHub OAuth (deep-link flow), password reset, email verification, account deactivation, safe user-facing error messages.
+- **Phase 3 — Real quizzes**: conversations synced to Appwrite Databases (per-user permissions); questions generated from conversation content (on-device cloze + optional LLM function); quiz attempts recorded; SM-2 spaced-repetition scheduling with due badges; local notifications honoring the interval/time settings.
 
 Pending:
 
-- **Phase 3 — Real quizzes**: sync conversations to Appwrite Databases (per-user permissions); generate questions from conversation content (server-side LLM function + on-device fill-in-the-blank fallback); per-conversation quiz history; SM-2 spaced-repetition scheduling; local notifications honoring the interval/time settings.
 - **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); web `/admin` dashboard gated by an Appwrite "admins" team — active users, retention, quiz accuracy, per-user activity.
 - **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by correct answers), daily streaks, review heatmap, XP/levels, achievements, daily goal ring; shared component library, working dark mode, micro-interactions, onboarding.
 - **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review.

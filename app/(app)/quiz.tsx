@@ -1,33 +1,75 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { generateQuiz } from '@/services/quiz';
 import { useQuizStore } from '@/store';
 
 export default function QuizScreen() {
   const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
-  const { quiz, conversations, startQuiz, answerQuestion, nextQuestion, resetQuiz } =
+  const { quiz, conversations, startQuiz, answerQuestion, nextQuestion, resetQuiz, applyQuizResult } =
     useQuizStore();
   const router = useRouter();
+  const [generating, setGenerating] = useState(true);
+  const [noContent, setNoContent] = useState(false);
+  const recordedRef = useRef(false);
 
   const conversation = conversations.find((c) => c.id === conversationId);
 
-  useEffect(() => {
-    if (conversationId) {
-      startQuiz(conversationId);
+  const beginQuiz = useCallback(async () => {
+    const target = useQuizStore
+      .getState()
+      .conversations.find((c) => c.id === conversationId);
+    if (!target) {
+      setGenerating(false);
+      return;
     }
-    return () => resetQuiz();
-  }, [conversationId, startQuiz, resetQuiz]);
+    setGenerating(true);
+    setNoContent(false);
+    recordedRef.current = false;
+    const questions = await generateQuiz(target);
+    if (questions.length === 0) {
+      setNoContent(true);
+    } else {
+      startQuiz(target.id, questions);
+    }
+    setGenerating(false);
+  }, [conversationId, startQuiz]);
 
-  if (!conversation || quiz.status === 'idle' || quiz.questions.length === 0) {
+  useEffect(() => {
+    beginQuiz();
+    return () => resetQuiz();
+  }, [beginQuiz, resetQuiz]);
+
+  // Record the result exactly once when the quiz finishes.
+  useEffect(() => {
+    if (quiz.status === 'finished' && quiz.conversationId && !recordedRef.current) {
+      recordedRef.current = true;
+      const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
+      applyQuizResult(quiz.conversationId, correct, quiz.questions.length);
+    }
+  }, [quiz, applyQuizResult]);
+
+  if (!conversation || noContent || generating || quiz.status === 'idle') {
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
-        <Text className="text-center text-lg text-gray-500 dark:text-gray-400">
-          {conversation ? 'Preparing quiz…' : 'Conversation not found.'}
-        </Text>
-        {!conversation && (
-          <Pressable className="mt-4 rounded-lg bg-primary p-3" onPress={() => router.back()}>
-            <Text className="text-center font-semibold text-white">Go back</Text>
-          </Pressable>
+        {generating && conversation ? (
+          <>
+            <ActivityIndicator />
+            <Text className="mt-4 text-center text-lg text-gray-500 dark:text-gray-400">
+              Building your quiz from “{conversation.title}”…
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text className="text-center text-lg text-gray-500 dark:text-gray-400">
+              {conversation
+                ? 'Not enough content to build a quiz. Add a few full sentences to this conversation.'
+                : 'Conversation not found.'}
+            </Text>
+            <Pressable className="mt-4 rounded-lg bg-primary p-3" onPress={() => router.back()}>
+              <Text className="text-center font-semibold text-white">Go back</Text>
+            </Pressable>
+          </>
         )}
       </View>
     );
@@ -35,21 +77,24 @@ export default function QuizScreen() {
 
   if (quiz.status === 'finished') {
     const total = quiz.questions.length;
-    const correct = quiz.answers.filter(
-      (a, i) => a === quiz.questions[i].correct
-    ).length;
+    const correct = quiz.answers.filter((a, i) => a === quiz.questions[i].correct).length;
+    const nextReview = conversation.memory.nextReviewAt
+      ? new Date(conversation.memory.nextReviewAt).toLocaleDateString()
+      : null;
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
         <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
           Quiz complete
         </Text>
-        <Text className="mb-6 text-center text-lg text-black dark:text-dark-text">
+        <Text className="mb-2 text-center text-lg text-black dark:text-dark-text">
           You got {correct} of {total} right — {quiz.score} points
         </Text>
-        <Pressable
-          className="mb-3 rounded-lg bg-primary p-3"
-          onPress={() => startQuiz(conversation.id)}
-        >
+        {nextReview && (
+          <Text className="mb-6 text-center text-gray-500 dark:text-gray-400">
+            Next review scheduled for {nextReview}
+          </Text>
+        )}
+        <Pressable className="mb-3 rounded-lg bg-primary p-3" onPress={beginQuiz}>
           <Text className="text-center font-semibold text-white">Try again</Text>
         </Pressable>
         <Pressable className="rounded-lg bg-secondary p-3" onPress={() => router.back()}>
