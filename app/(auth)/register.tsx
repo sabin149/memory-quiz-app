@@ -171,6 +171,11 @@ export default function RegisterScreen() {
             Already have an account? Login
           </Text>
         </Pressable>
+        <Pressable className="mt-4" onPress={() => router.push('/privacy')} disabled={submitting}>
+          <Text className="text-center text-xs text-gray-500 underline dark:text-gray-400">
+            By creating an account you agree to our privacy policy
+          </Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

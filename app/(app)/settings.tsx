@@ -1,17 +1,23 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import {
   deactivateAccount,
   sendVerificationEmail,
   toAuthErrorMessage,
 } from '@/services/auth';
-import { useQuizStore } from '@/store';
+import { ThemePreference, useQuizStore } from '@/store';
 import { isValidIntervalDays, TIME_PATTERN } from '@/utils/validation';
 
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 export default function SettingsScreen() {
-  const { settings, updateSettings, user, setUser } = useQuizStore();
+  const { settings, updateSettings, user, clearUserData, theme, setTheme } = useQuizStore();
   const router = useRouter();
 
   const [quizInterval, setQuizInterval] = useState(String(settings.quizIntervalDays));
@@ -65,7 +71,7 @@ export default function SettingsScreen() {
             setDeleting(true);
             try {
               await deactivateAccount();
-              setUser(null);
+              clearUserData();
             } catch (error) {
               Toast.show({
                 type: 'error',
@@ -104,6 +110,25 @@ export default function SettingsScreen() {
         </Pressable>
       )}
 
+      <Text className="mb-1 text-black dark:text-dark-text">Appearance</Text>
+      <View className="mb-4 flex-row overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
+        {THEME_OPTIONS.map(({ value, label }) => (
+          <Pressable
+            key={value}
+            className={`flex-1 p-3 ${theme === value ? 'bg-primary' : 'bg-white dark:bg-gray-800'}`}
+            onPress={() => setTheme(value)}
+          >
+            <Text
+              className={`text-center ${
+                theme === value ? 'font-semibold text-white' : 'text-black dark:text-dark-text'
+              }`}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
       <Text className="mb-1 text-black dark:text-dark-text">Quiz interval (days)</Text>
       <TextInput
         className="mb-4 rounded-lg border border-gray-300 bg-white p-3 text-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
@@ -124,6 +149,9 @@ export default function SettingsScreen() {
       {errorText && <Text className="mb-4 text-red-500">{errorText}</Text>}
       <Pressable className="mb-4 rounded-lg bg-primary p-3" onPress={handleSave}>
         <Text className="text-center font-semibold text-white">Save</Text>
+      </Pressable>
+      <Pressable className="mb-4" onPress={() => router.push('/privacy')}>
+        <Text className="text-center text-secondary dark:text-accent">Privacy policy</Text>
       </Pressable>
       <Pressable className="mb-10" onPress={() => router.back()}>
         <Text className="text-center text-secondary dark:text-accent">Back</Text>

@@ -106,6 +106,14 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
+/**
+ * Persists gamification progress in Appwrite account prefs so XP/streaks
+ * follow the user across devices. Fire-and-forget.
+ */
+export function saveGamificationPrefs(gamification: object): void {
+  account.updatePrefs({ gamification }).catch(() => {});
+}
+
 /** Emails a password-reset link that deep-links back into the app. */
 export async function requestPasswordReset(email: string): Promise<void> {
   await account.createRecovery(email, `${appwriteCallbackScheme}://reset-password`);
