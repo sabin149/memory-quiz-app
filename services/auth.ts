@@ -53,6 +53,8 @@ export function toAuthErrorMessage(error: unknown): string {
         return 'Sign-in with the provider failed. Please try again.';
       case 'user_session_not_found':
         return 'Your session has expired. Please log in again.';
+      case 'user_auth_method_unsupported':
+        return 'This sign-in method is disabled on the server. Enable Email/Password auth in the Appwrite console (Auth → Settings).';
       default:
         if (error.code === 429) return 'Too many attempts. Please wait a moment and try again.';
         if (error.code === 400) return 'Invalid input. Check the form and try again.';
