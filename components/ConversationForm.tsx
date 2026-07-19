@@ -32,13 +32,8 @@ export default function ConversationForm({
   });
 
   const onSubmitForm = (data: FormData) => {
-    addConversation({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      title: data.title.trim(),
-      content: data.content.trim(),
-      tagged: false,
-      createdAt: new Date().toISOString(),
-    });
+    // Applies locally at once; the store pushes to Appwrite in the background.
+    addConversation({ title: data.title.trim(), content: data.content.trim() });
     Toast.show({ type: 'success', text1: 'Saved', text2: 'Conversation added.' });
     reset({ title: '', content: '' });
     onSaved?.();
