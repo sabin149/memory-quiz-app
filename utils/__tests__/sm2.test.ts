@@ -1,4 +1,10 @@
-import { initialMemory, isDue, reviewMemory } from '@/utils/sm2';
+import {
+  answerQuality,
+  initialMemory,
+  isDue,
+  reviewMemory,
+  reviewMemoryQuality,
+} from '@/utils/sm2';
 
 const NOW = new Date('2026-07-19T12:00:00Z');
 
@@ -49,5 +55,45 @@ describe('sm2', () => {
   it('clamps score input to 0-100', () => {
     const memory = reviewMemory(initialMemory(), 250, NOW);
     expect(memory.lastScorePct).toBe(100);
+  });
+});
+
+describe('answerQuality (confidence rating)', () => {
+  it('grades confident correct answers highest', () => {
+    expect(answerQuality(true, 'knew')).toBe(5);
+    expect(answerQuality(true, 'hesitant')).toBe(4);
+    expect(answerQuality(true, null)).toBe(4);
+  });
+
+  it('treats a lucky guess as below the pass threshold', () => {
+    expect(answerQuality(true, 'guessed')).toBeLessThan(3);
+  });
+
+  it('grades wrong answers lowest', () => {
+    expect(answerQuality(false, 'knew')).toBe(1);
+    expect(answerQuality(false, 'hesitant')).toBe(1);
+    expect(answerQuality(false, 'guessed')).toBe(0);
+    expect(answerQuality(false, null)).toBe(1);
+  });
+});
+
+describe('reviewMemoryQuality', () => {
+  it('a quiz of lucky guesses does not extend the schedule', () => {
+    let memory = reviewMemory(initialMemory(), 100, NOW);
+    memory = reviewMemory(memory, 100, NOW); // interval now 6
+    const afterGuesses = reviewMemoryQuality(memory, answerQuality(true, 'guessed'), 100, NOW);
+    expect(afterGuesses.repetitions).toBe(0); // lapse despite 100% score
+    expect(afterGuesses.intervalDays).toBe(1);
+  });
+
+  it('confident perfect recall progresses the schedule', () => {
+    const memory = reviewMemoryQuality(initialMemory(), 5, 100, NOW);
+    expect(memory.repetitions).toBe(1);
+    expect(memory.intervalDays).toBe(1);
+  });
+
+  it('clamps out-of-range quality', () => {
+    const memory = reviewMemoryQuality(initialMemory(), 99, 100, NOW);
+    expect(memory.repetitions).toBe(1);
   });
 });

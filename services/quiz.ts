@@ -34,29 +34,42 @@ function isValidQuestion(value: unknown): value is QuizQuestion {
   );
 }
 
-/**
- * Server-side AI generation via an Appwrite Function (comprehension-style
- * questions). The LLM API key lives in the function's environment, never in
- * the app bundle.
- */
-async function generateWithFunction(request: QuizRequest): Promise<QuizQuestion[] | null> {
+export interface GeneratedQuiz {
+  questions: QuizQuestion[];
+  /** Fetched page text for URL quizzes, so the user can save it to the library. */
+  sourceText?: string;
+}
+
+async function callQuizFunction(payload: object): Promise<Record<string, unknown> | null> {
   if (!QUIZ_FUNCTION_ID) return null;
   try {
     const execution = await functions.createExecution(
       QUIZ_FUNCTION_ID,
-      JSON.stringify(request),
+      JSON.stringify(payload),
       false,
       undefined,
       ExecutionMethod.POST
     );
     if (execution.status !== 'completed') return null;
-    const parsed = JSON.parse(execution.responseBody);
-    const questions = Array.isArray(parsed?.questions) ? parsed.questions : null;
-    if (!questions || questions.length === 0 || !questions.every(isValidQuestion)) return null;
-    return questions;
+    return JSON.parse(execution.responseBody);
   } catch {
-    return null; // fall back where possible
+    return null;
   }
+}
+
+/**
+ * Server-side AI generation via an Appwrite Function (comprehension-style
+ * questions). The LLM API key lives in the function's environment, never in
+ * the app bundle.
+ */
+async function generateWithFunction(request: QuizRequest): Promise<GeneratedQuiz | null> {
+  const parsed = await callQuizFunction(request);
+  const questions = Array.isArray(parsed?.questions) ? parsed.questions : null;
+  if (!questions || questions.length === 0 || !questions.every(isValidQuestion)) return null;
+  return {
+    questions,
+    sourceText: typeof parsed?.sourceText === 'string' ? parsed.sourceText : undefined,
+  };
 }
 
 /**
@@ -64,14 +77,31 @@ async function generateWithFunction(request: QuizRequest): Promise<QuizQuestion[
  * saved content falls back to on-device generation so the app keeps working
  * offline. Topic/URL sources require the AI function.
  */
-export async function generateQuiz(request: QuizRequest): Promise<QuizQuestion[]> {
+export async function generateQuiz(request: QuizRequest): Promise<GeneratedQuiz> {
   const fromFunction = await generateWithFunction(request);
   if (fromFunction) return fromFunction;
 
   if (request.content) {
-    return generateClozeQuiz(request.content, request.count);
+    return { questions: generateClozeQuiz(request.content, request.count) };
   }
   throw new Error(
     'AI quiz generation is not configured. Deploy functions/generate-quiz and set EXPO_PUBLIC_APPWRITE_QUIZ_FUNCTION_ID.'
   );
+}
+
+/**
+ * One-line AI explanation of why the picked answer is wrong (and the correct
+ * one right). Returns null when the AI function isn't configured or fails —
+ * the UI simply hides the feature.
+ */
+export async function explainAnswer(input: {
+  question: string;
+  options: string[];
+  correct: number;
+  selected: number;
+  context?: string;
+}): Promise<string | null> {
+  const parsed = await callQuizFunction({ explain: input });
+  const explanation = parsed?.explanation;
+  return typeof explanation === 'string' && explanation.trim() ? explanation.trim() : null;
 }

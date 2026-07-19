@@ -21,7 +21,14 @@ import {
   updateRemoteTag,
 } from '@/services/conversations';
 import { scheduleQuizReminder } from '@/services/notifications';
-import { initialMemory, isDue, MemoryState, reviewMemory } from '@/utils/sm2';
+import {
+  answerQuality,
+  Confidence,
+  initialMemory,
+  isDue,
+  MemoryState,
+  reviewMemoryQuality,
+} from '@/utils/sm2';
 
 export interface Conversation {
   id: string;
@@ -48,6 +55,8 @@ interface QuizState {
   currentQuestion: number;
   score: number;
   answers: (number | null)[];
+  /** Self-reported confidence per question (may stay null). */
+  confidences: (Confidence | null)[];
   questions: QuizQuestion[];
 }
 
@@ -64,6 +73,7 @@ const EMPTY_QUIZ: QuizState = {
   currentQuestion: 0,
   score: 0,
   answers: [],
+  confidences: [],
   questions: [],
 };
 
@@ -102,6 +112,7 @@ interface AppState {
   /** conversationId null = ad-hoc quiz (topic/URL) with no memory schedule. */
   startQuiz: (conversationId: string | null, questions: QuizQuestion[]) => void;
   answerQuestion: (selected: number) => void;
+  setConfidence: (confidence: Confidence) => void;
   nextQuestion: () => void;
   resetQuiz: () => void;
   /** Applies SM-2 to the conversation (when saved) and reschedules the reminder. */
@@ -264,8 +275,20 @@ export const useQuizStore = create<AppState>()(
             currentQuestion: 0,
             score: 0,
             answers: [],
+            confidences: [],
             questions,
           },
+        }),
+
+      setConfidence: (confidence) =>
+        set((state) => {
+          const { quiz } = state;
+          if (quiz.status !== 'active' || quiz.answers[quiz.currentQuestion] == null) {
+            return state;
+          }
+          const confidences = [...quiz.confidences];
+          confidences[quiz.currentQuestion] = confidence;
+          return { quiz: { ...quiz, confidences } };
         }),
 
       answerQuestion: (selected) =>
@@ -309,7 +332,18 @@ export const useQuizStore = create<AppState>()(
         const scorePct = Math.round((correct / total) * 100);
         const completedAt = new Date().toISOString();
         const gamification = recordQuizActivity(get().gamification, correct, total);
-        const memory = target ? reviewMemory(target.memory, scorePct) : null;
+
+        // Confidence-weighted SM-2 grade: a lucky guess is not remembering.
+        const { quiz } = get();
+        const avgQuality =
+          quiz.questions.length === total
+            ? quiz.questions.reduce(
+                (sum, q, i) =>
+                  sum + answerQuality(quiz.answers[i] === q.correct, quiz.confidences[i] ?? null),
+                0
+              ) / total
+            : (correct / total) * 5;
+        const memory = target ? reviewMemoryQuality(target.memory, avgQuality, scorePct) : null;
 
         set((state) => ({
           conversations: memory

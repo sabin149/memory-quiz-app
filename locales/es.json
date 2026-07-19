@@ -97,7 +97,16 @@
     "medium": "Media",
     "hard": "Difícil",
     "startQuiz": "Comenzar cuestionario",
-    "quizMe": "Evalúame"
+    "quizMe": "Evalúame",
+    "howSure": "¿Qué tan seguro estabas?",
+    "guessed": "Adiviné",
+    "hesitant": "Dudoso",
+    "knewIt": "Lo sabía",
+    "explain": "Explicar por qué",
+    "explaining": "Pensando…",
+    "explainFailed": "No se pudo obtener una explicación ahora.",
+    "saveToLibrary": "Guardar en biblioteca",
+    "savedToLibrary": "Guardado en biblioteca"
   },
   "profile": {
     "verified": "Verificado",

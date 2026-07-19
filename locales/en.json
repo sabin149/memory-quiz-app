@@ -97,7 +97,16 @@
     "medium": "Medium",
     "hard": "Hard",
     "startQuiz": "Start quiz",
-    "quizMe": "Quiz me"
+    "quizMe": "Quiz me",
+    "howSure": "How sure were you?",
+    "guessed": "Guessed",
+    "hesitant": "Hesitant",
+    "knewIt": "Knew it",
+    "explain": "Explain why",
+    "explaining": "Thinking…",
+    "explainFailed": "Could not get an explanation right now.",
+    "saveToLibrary": "Save to library",
+    "savedToLibrary": "Saved to library"
   },
   "profile": {
     "verified": "Verified",

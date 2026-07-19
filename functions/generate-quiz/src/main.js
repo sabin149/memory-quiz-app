@@ -54,6 +54,27 @@ Rules:
 - Questions must be answerable from the provided material (or well-established knowledge for topic mode).
 - Never reveal the answer inside the question.`;
 
+async function chatCompletion(systemPrompt, userPrompt, jsonMode = true) {
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  });
+  if (!response.ok) throw new Error(`LLM API returned ${response.status}`);
+  const completion = await response.json();
+  return completion.choices?.[0]?.message?.content ?? '';
+}
+
 function isValidQuestion(q) {
   return (
     q &&
@@ -104,6 +125,34 @@ export default async ({ req, res, error }) => {
   } catch {
     return res.json({ questions: [] }, 400);
   }
+
+  // Explain mode: why was the picked answer wrong (learning reinforcement)?
+  if (payload.explain && typeof payload.explain === 'object') {
+    const { question, options, correct, selected, context } = payload.explain;
+    if (
+      typeof question !== 'string' ||
+      !Array.isArray(options) ||
+      !Number.isInteger(correct) ||
+      !Number.isInteger(selected)
+    ) {
+      return res.json({ explanation: null }, 400);
+    }
+    try {
+      const explanation = await chatCompletion(
+        'You are a concise tutor. In at most 2 sentences, explain why the correct answer is right and, if relevant, why the chosen answer is a common mix-up. No preamble, no repetition of the question.',
+        `Question: ${question}\nOptions: ${options.join(' | ')}\nCorrect answer: ${options[correct]}\nLearner chose: ${options[selected]}` +
+          (typeof context === 'string' && context
+            ? `\n\nSource material:\n${context.slice(0, 4000)}`
+            : ''),
+        false
+      );
+      return res.json({ explanation: explanation.trim().slice(0, 600) });
+    } catch (e) {
+      error(`Explanation failed: ${e.message}`);
+      return res.json({ explanation: null }, 502);
+    }
+  }
+
   const { content, topic, url } = payload;
   const difficulty = ['easy', 'medium', 'hard'].includes(payload.difficulty)
     ? payload.difficulty
@@ -131,33 +180,16 @@ export default async ({ req, res, error }) => {
     (material ? `\n\nMaterial:\n${material.slice(0, MAX_CONTENT_CHARS)}` : '');
 
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      error(`LLM API returned ${response.status}`);
-      return res.json({ questions: [] }, 502);
-    }
-
-    const completion = await response.json();
-    const parsed = JSON.parse(completion.choices?.[0]?.message?.content ?? '{}');
+    const raw = await chatCompletion(SYSTEM_PROMPT, userPrompt);
+    const parsed = JSON.parse(raw || '{}');
     const questions = Array.isArray(parsed.questions)
       ? parsed.questions.filter(isValidQuestion).slice(0, count)
       : [];
-    return res.json({ questions });
+    // For URL quizzes, return the fetched text so the app can offer to save
+    // it to the library (spaced repetition needs the content).
+    const sourceText =
+      typeof url === 'string' && url.trim() && material ? material.slice(0, 8000) : undefined;
+    return res.json(sourceText ? { questions, sourceText } : { questions });
   } catch (e) {
     error(`Quiz generation failed: ${e.message}`);
     return res.json({ questions: [] }, 500);

@@ -35,13 +35,44 @@ export function initialMemory(): MemoryState {
   };
 }
 
+/** Self-reported confidence for an answer, Anki-style. */
+export type Confidence = 'guessed' | 'hesitant' | 'knew';
+
+/**
+ * SM-2 quality grade (0-5) for one answer, from correctness + confidence.
+ * A lucky guess is not remembering: guessed-correct grades below the pass
+ * threshold, so the schedule doesn't stretch on luck.
+ */
+export function answerQuality(correct: boolean, confidence: Confidence | null): number {
+  if (correct) {
+    if (confidence === 'knew') return 5;
+    if (confidence === 'guessed') return 2;
+    return 4; // hesitant, or no rating given
+  }
+  return confidence === 'guessed' ? 0 : 1;
+}
+
 /**
  * Applies a quiz result to the memory state. Score (0-100) maps to the SM-2
  * quality grade (0-5); below 60% counts as a lapse and restarts the interval.
  */
 export function reviewMemory(prev: MemoryState, scorePct: number, now: Date = new Date()): MemoryState {
   const clamped = Math.max(0, Math.min(100, scorePct));
-  const quality = Math.round(clamped / 20); // 0-5
+  return reviewMemoryQuality(prev, Math.round(clamped / 20), clamped, now);
+}
+
+/**
+ * Quality-driven review (used when per-answer confidence is available; the
+ * average answer quality is a more honest SM-2 grade than raw correctness).
+ */
+export function reviewMemoryQuality(
+  prev: MemoryState,
+  rawQuality: number,
+  scorePct: number,
+  now: Date = new Date()
+): MemoryState {
+  const quality = Math.round(Math.max(0, Math.min(5, rawQuality)));
+  const clamped = Math.max(0, Math.min(100, scorePct));
 
   let { easeFactor, intervalDays, repetitions } = prev;
 
