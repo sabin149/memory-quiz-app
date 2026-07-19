@@ -108,64 +108,72 @@ export default function AdminUsersScreen() {
         />
       </View>
 
-      {/* Header row: tap a column to sort, tap again to flip direction. */}
-      <View className="flex-row rounded-t-lg bg-primary/10 px-3 py-2 dark:bg-primary/20">
-        {table.getHeaderGroups()[0].headers.map((header) => {
-          const sorted = header.column.getIsSorted();
-          const flex = (header.column.columnDef.meta as { flex?: number })?.flex ?? 1;
-          return (
-            <Pressable
-              key={header.id}
-              className="flex-row items-center"
-              style={{ flex }}
-              onPress={header.column.getToggleSortingHandler()}
-              accessibilityRole="button"
-              accessibilityLabel={`Sort by ${header.column.columnDef.header}`}
-            >
-              <Text className="text-xs font-bold text-primary dark:text-dark-text">
-                {flexRender(header.column.columnDef.header, header.getContext())}
-              </Text>
-              {sorted && (
-                <Ionicons
-                  name={sorted === 'asc' ? 'caret-up' : 'caret-down'}
-                  size={11}
-                  color="#4B5EAA"
-                  style={{ marginLeft: 2 }}
-                />
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
+      {/* Horizontal scroller: five columns need ~560px; phones have ~360. */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{ minWidth: 560, flex: 1 }}>
+          {/* Header row: tap a column to sort, tap again to flip direction. */}
+          <View className="flex-row rounded-t-lg bg-primary/10 px-3 py-2 dark:bg-primary/20">
+            {table.getHeaderGroups()[0].headers.map((header) => {
+              const sorted = header.column.getIsSorted();
+              const flex = (header.column.columnDef.meta as { flex?: number })?.flex ?? 1;
+              return (
+                <Pressable
+                  key={header.id}
+                  className="flex-row items-center"
+                  style={{ flex }}
+                  onPress={header.column.getToggleSortingHandler()}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sort by ${header.column.columnDef.header}`}
+                >
+                  <Text
+                    className="text-xs font-bold text-primary dark:text-dark-text"
+                    numberOfLines={1}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </Text>
+                  {sorted && (
+                    <Ionicons
+                      name={sorted === 'asc' ? 'caret-up' : 'caret-down'}
+                      size={11}
+                      color="#4B5EAA"
+                      style={{ marginLeft: 2 }}
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
 
-      {table.getRowModel().rows.map((row) => (
-        <Pressable
-          key={row.id}
-          className="flex-row border-b border-gray-100 bg-white px-3 py-3 active:opacity-70 dark:border-gray-800 dark:bg-gray-900"
-          onPress={() =>
-            router.push({
-              pathname: '/admin/user/[userId]',
-              params: { userId: row.original.ownerId },
-            })
-          }
-          accessibilityRole="button"
-          accessibilityLabel={`Open activity for user ${row.original.ownerId}`}
-        >
-          {row.getVisibleCells().map((cell) => {
-            const flex = (cell.column.columnDef.meta as { flex?: number })?.flex ?? 1;
-            return (
-              <Text
-                key={cell.id}
-                style={{ flex }}
-                className="text-xs text-gray-700 dark:text-gray-300"
-                numberOfLines={1}
-              >
-                {flexRender(cell.column.columnDef.cell ?? String(cell.getValue() ?? ''), cell.getContext())}
-              </Text>
-            );
-          })}
-        </Pressable>
-      ))}
+          {table.getRowModel().rows.map((row) => (
+            <Pressable
+              key={row.id}
+              className="flex-row border-b border-gray-100 bg-white px-3 py-3 active:opacity-70 dark:border-gray-800 dark:bg-gray-900"
+              onPress={() =>
+                router.push({
+                  pathname: '/admin/user/[userId]',
+                  params: { userId: row.original.ownerId },
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`Open activity for user ${row.original.ownerId}`}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const flex = (cell.column.columnDef.meta as { flex?: number })?.flex ?? 1;
+                return (
+                  <Text
+                    key={cell.id}
+                    style={{ flex }}
+                    className="text-xs text-gray-700 dark:text-gray-300"
+                    numberOfLines={1}
+                  >
+                    {flexRender(cell.column.columnDef.cell ?? String(cell.getValue() ?? ''), cell.getContext())}
+                  </Text>
+                );
+              })}
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
 
       {filteredCount === 0 && (
         <Text className="mt-6 text-center text-gray-500 dark:text-gray-400">

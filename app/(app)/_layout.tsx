@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { checkIsAdmin } from '@/services/admin';
 import { trackEvent } from '@/services/analytics';
@@ -9,6 +10,7 @@ import { useQuizStore } from '@/store';
 
 export default function AppLayout() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const user = useQuizStore((s) => s.user);
   const syncConversations = useQuizStore((s) => s.syncConversations);
 
@@ -39,7 +41,16 @@ export default function AppLayout() {
         headerStyle: { backgroundColor: '#4B5EAA' },
         headerTintColor: '#fff',
         headerTitleStyle: { fontWeight: '700' },
-        tabBarStyle: { paddingBottom: 4 },
+        // Edge-to-edge (app.json) draws under the Android system bar; a
+        // hardcoded paddingBottom would override the safe-area inset and
+        // half-hide the tab labels. Pad with the real inset instead.
+        tabBarStyle: {
+          height: 56 + insets.bottom,
+          paddingBottom: Math.max(insets.bottom, 6),
+          paddingTop: 6,
+        },
+        tabBarLabelStyle: { fontSize: 11 },
+        tabBarAllowFontScaling: false,
       }}
     >
       <Tabs.Screen

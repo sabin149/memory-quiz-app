@@ -5,10 +5,12 @@ import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import Button from '@/components/ui/Button';
-import { Difficulty, generateQuiz } from '@/services/quiz';
+import { aiGenerationAvailable, Difficulty, explainAnswer, generateQuiz } from '@/services/quiz';
 import { useQuizStore } from '@/store';
 import { xpForQuiz } from '@/utils/gamification';
+import type { Confidence } from '@/utils/sm2';
 
 function answerFeedback(correct: boolean) {
   if (Platform.OS === 'web') return;
@@ -16,6 +18,12 @@ function answerFeedback(correct: boolean) {
     correct ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Error
   ).catch(() => {});
 }
+
+const CONFIDENCE_OPTIONS: { value: Confidence; labelKey: string }[] = [
+  { value: 'guessed', labelKey: 'quiz.guessed' },
+  { value: 'hesitant', labelKey: 'quiz.hesitant' },
+  { value: 'knew', labelKey: 'quiz.knewIt' },
+];
 
 export default function QuizScreen() {
   const { t } = useTranslation();
@@ -26,11 +34,24 @@ export default function QuizScreen() {
     difficulty?: Difficulty;
     count?: string;
   }>();
-  const { quiz, conversations, startQuiz, answerQuestion, nextQuestion, resetQuiz, applyQuizResult } =
-    useQuizStore();
+  const {
+    quiz,
+    conversations,
+    startQuiz,
+    answerQuestion,
+    setConfidence,
+    nextQuestion,
+    resetQuiz,
+    applyQuizResult,
+    addConversation,
+  } = useQuizStore();
   const router = useRouter();
   const [generating, setGenerating] = useState(true);
   const [genError, setGenError] = useState<string | null>(null);
+  const [sourceText, setSourceText] = useState<string | undefined>();
+  const [explanations, setExplanations] = useState<Record<number, string>>({});
+  const [explaining, setExplaining] = useState(false);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
   const recordedRef = useRef(false);
 
   const conversation = conversations.find((c) => c.id === params.conversationId);
@@ -50,13 +71,17 @@ export default function QuizScreen() {
         setGenError('Conversation not found.');
         return;
       }
-      const questions = await generateQuiz({
+      const generated = await generateQuiz({
         content: target?.content,
         topic: params.topic || undefined,
         url: params.url || undefined,
         difficulty: params.difficulty ?? 'medium',
         count: Number(params.count) || 5,
       });
+      const questions = generated.questions;
+      setSourceText(generated.sourceText);
+      setExplanations({});
+      setSavedToLibrary(false);
       if (questions.length === 0) {
         setGenError(
           target
@@ -139,6 +164,27 @@ export default function QuizScreen() {
             {t('quiz.nextReview', { date: nextReview })}
           </Text>
         )}
+        {/* Ad-hoc quizzes (topic/URL) can be kept for spaced repetition. */}
+        {!params.conversationId && (params.topic || params.url) && (
+          <Button
+            title={savedToLibrary ? t('quiz.savedToLibrary') : t('quiz.saveToLibrary')}
+            icon={savedToLibrary ? 'checkmark-done-outline' : 'bookmark-outline'}
+            variant="success"
+            disabled={savedToLibrary}
+            onPress={() => {
+              const title = params.topic ?? (params.url ? new URL(params.url).hostname : 'Quiz');
+              const content =
+                sourceText ??
+                quiz.questions
+                  .map((q) => `Q: ${q.question}\nA: ${q.options[q.correct]}`)
+                  .join('\n\n');
+              addConversation({ title, content });
+              setSavedToLibrary(true);
+              Toast.show({ type: 'success', text1: t('quiz.savedToLibrary') });
+            }}
+            className="mb-3"
+          />
+        )}
         <Button title={t('common.tryAgain')} icon="refresh-outline" onPress={beginQuiz} className="mb-3" />
         <Button
           title={t('common.done')}
@@ -204,6 +250,84 @@ export default function QuizScreen() {
               ? t('quiz.correct')
               : t('quiz.correctAnswer', { answer: question.options[question.correct] })}
           </Text>
+
+          {/* AI explanation for wrong answers (when the function is configured). */}
+          {selected !== question.correct && aiGenerationAvailable() && (
+            <View className="mt-2">
+              {explanations[quiz.currentQuestion] ? (
+                <View className="rounded-lg border-l-4 border-l-primary bg-primary/5 p-3 dark:bg-primary/15">
+                  <Text className="text-sm text-gray-700 dark:text-gray-300">
+                    {explanations[quiz.currentQuestion]}
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  className="flex-row items-center justify-center py-2"
+                  disabled={explaining}
+                  onPress={async () => {
+                    setExplaining(true);
+                    const explanation = await explainAnswer({
+                      question: question.question,
+                      options: question.options,
+                      correct: question.correct,
+                      selected,
+                      context: conversation?.content ?? sourceText,
+                    });
+                    setExplaining(false);
+                    if (explanation) {
+                      setExplanations((prev) => ({ ...prev, [quiz.currentQuestion]: explanation }));
+                    } else {
+                      Toast.show({ type: 'error', text1: t('quiz.explainFailed') });
+                    }
+                  }}
+                  accessibilityRole="button"
+                >
+                  {explaining ? (
+                    <ActivityIndicator size="small" />
+                  ) : (
+                    <Ionicons name="bulb-outline" size={16} color="#4B5EAA" />
+                  )}
+                  <Text className="ml-1 text-sm font-semibold text-primary dark:text-accent">
+                    {explaining ? t('quiz.explaining') : t('quiz.explain')}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
+          {/* Confidence rating: feeds the SM-2 grade (optional, one tap). */}
+          <Text className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+            {t('quiz.howSure')}
+          </Text>
+          <View className="mt-2 flex-row justify-center">
+            {CONFIDENCE_OPTIONS.map(({ value, labelKey }) => {
+              const selectedConfidence = quiz.confidences[quiz.currentQuestion] === value;
+              return (
+                <Pressable
+                  key={value}
+                  className={`mx-1 rounded-full border px-4 py-1.5 ${
+                    selectedConfidence
+                      ? 'border-primary bg-primary'
+                      : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+                  }`}
+                  onPress={() => setConfidence(value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedConfidence }}
+                >
+                  <Text
+                    className={
+                      selectedConfidence
+                        ? 'text-xs font-semibold text-white'
+                        : 'text-xs text-black dark:text-dark-text'
+                    }
+                  >
+                    {t(labelKey)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
           <Pressable
             className="mt-4 flex-row items-center justify-center rounded-lg bg-blue-500 p-3 active:opacity-80"
             onPress={nextQuestion}
