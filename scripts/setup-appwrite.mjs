@@ -9,8 +9,9 @@
  *   "admins" team (grants access to the in-app admin portal).
  *
  * Endpoint/project are read from .env (EXPO_PUBLIC_APPWRITE_*) or the
- * environment. The API key must NEVER be committed or put in .env — pass it
- * inline or export it in your shell for the one run.
+ * environment. APPWRITE_API_KEY may be passed inline or kept in the
+ * gitignored .env — but never committed and never given an EXPO_PUBLIC_
+ * prefix (that would embed it in the app bundle).
  */
 import { readFileSync } from 'node:fs';
 import { Client, Databases, Permission, Query, Role, Teams, Users } from 'node-appwrite';
@@ -40,7 +41,7 @@ const apiKey = process.env.APPWRITE_API_KEY;
 
 if (!endpoint || !projectId || !apiKey) {
   console.error(
-    'Missing configuration. Required: EXPO_PUBLIC_APPWRITE_ENDPOINT, EXPO_PUBLIC_APPWRITE_PROJECT_ID (env or .env) and APPWRITE_API_KEY (env only).'
+    'Missing configuration. Required in env or .env: EXPO_PUBLIC_APPWRITE_ENDPOINT, EXPO_PUBLIC_APPWRITE_PROJECT_ID, APPWRITE_API_KEY.'
   );
   process.exit(1);
 }
