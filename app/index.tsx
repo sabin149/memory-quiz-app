@@ -1,9 +1,7 @@
-import { useQuizStore } from '@/store';
 import { Redirect } from 'expo-router';
+import { useQuizStore } from '@/store';
 
 export default function Index() {
-  const { user } = useQuizStore();
-  
-  // Simple redirect without useEffect
+  const user = useQuizStore((s) => s.user);
   return user ? <Redirect href="/home" /> : <Redirect href="/login" />;
 }

@@ -1,40 +1,44 @@
-import { Stack } from "expo-router";
-import { StatusBar } from "react-native";
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
-import "./globals.css";
+import { getCurrentUser } from '@/services/auth';
+import { useQuizStore } from '@/store';
+import './globals.css';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { authReady, setUser, setAuthReady } = useQuizStore();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const user = await getCurrentUser();
+      if (!cancelled) {
+        setUser(user);
+        setAuthReady(true);
+        SplashScreen.hideAsync();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, setAuthReady]);
+
+  if (!authReady) {
+    return null; // splash screen stays visible until the session check finishes
+  }
+
   return (
     <>
-      <StatusBar hidden={true} />
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen 
-          name="login" 
-          options={{ 
-            title: "Login",
-            headerBackVisible: false,
-            gestureEnabled: false 
-          }} 
-        />
-        <Stack.Screen 
-          name="register" 
-          options={{ 
-            title: "Register",
-            headerBackVisible: false,
-            gestureEnabled: false 
-          }} 
-        />
-        <Stack.Screen 
-          name="home" 
-          options={{ 
-            title: "Conversations",
-            headerBackVisible: false,
-            gestureEnabled: false 
-          }} 
-        />
-        <Stack.Screen name="quiz" options={{ title: "Quiz" }} />
-        <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        <Stack.Screen name="oauth" options={{ headerShown: false }} />
+        <Stack.Screen name="reset-password" options={{ headerShown: false }} />
+        <Stack.Screen name="verify-email" options={{ headerShown: false }} />
       </Stack>
       <Toast position="bottom" bottomOffset={50} />
     </>
