@@ -17,6 +17,10 @@ const SECTIONS: { heading: string; body: string }[] = [
     body: 'By default, quiz questions are generated on your device. If server-side generation is enabled, your conversation text is sent to the configured AI provider solely to create questions and is not stored by this app beyond that request.',
   },
   {
+    heading: 'Leaderboard (optional)',
+    body: 'The global leaderboard is strictly opt-in. If you join, only your first name and progress numbers (XP, streak, level, quiz count) are visible to other users — never your content, email, or activity details. Leaving removes your entry immediately.',
+  },
+  {
     heading: 'Crash reporting',
     body: 'If enabled, crash reports contain technical error details only. Personally identifying information is stripped before sending.',
   },

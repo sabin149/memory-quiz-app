@@ -3,9 +3,10 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import BrandMark from '@/components/BrandMark';
 import OAuthButtons from '@/components/OAuthButtons';
 import Button from '@/components/ui/Button';
 import { PasswordField, TextField } from '@/components/ui/TextField';
@@ -57,7 +58,13 @@ export default function LoginScreen() {
         contentContainerClassName="flex-grow justify-center px-6"
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View entering={FadeInDown.duration(400)}>
+        <Animated.View
+          entering={FadeInDown.duration(400)}
+          className="w-full max-w-md self-center"
+        >
+          <View className="mb-6">
+            <BrandMark />
+          </View>
           <Text className="mb-2 text-center text-3xl font-bold text-primary dark:text-dark-text">
             {t('auth.welcomeBack')}
           </Text>

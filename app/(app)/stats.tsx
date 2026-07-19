@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Heatmap from '@/components/Heatmap';
 import AnimatedBar from '@/components/ui/AnimatedBar';
 import Card from '@/components/ui/Card';
@@ -8,6 +9,7 @@ import { useQuizStore } from '@/store';
 import { ACHIEVEMENTS, computeStreak, levelFromXp } from '@/utils/gamification';
 
 export default function StatsScreen() {
+  const router = useRouter();
   const gamification = useQuizStore((s) => s.gamification);
   const conversations = useQuizStore((s) => s.conversations);
 
@@ -65,6 +67,22 @@ export default function StatsScreen() {
           {masteredCount} mastered
         </Text>
       </Card>
+
+      <Pressable
+        onPress={() => router.push('/leaderboard')}
+        accessibilityRole="button"
+        accessibilityLabel="Open global leaderboard"
+      >
+        <Card className="mb-4 flex-row items-center justify-between py-3">
+          <View className="flex-row items-center">
+            <Ionicons name="podium-outline" size={20} color="#4B5EAA" />
+            <Text className="ml-2 font-semibold text-black dark:text-dark-text">
+              Global leaderboard
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+        </Card>
+      </Pressable>
 
       <Text className="mb-2 font-semibold text-black dark:text-dark-text">Achievements</Text>
       {ACHIEVEMENTS.map((achievement) => {

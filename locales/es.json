@@ -142,6 +142,19 @@
     "timePlaceholder": "HH:MM, p. ej. 08:00",
     "timeError": "Usa el formato 24h HH:MM, p. ej. 08:00.",
     "saved": "Guardado",
-    "savedBody": "Preferencias actualizadas."
+    "savedBody": "Preferencias actualizadas.",
+    "custom": "Personalizado"
+  },
+  "leaderboard": {
+    "title": "Clasificación",
+    "byXp": "Top XP",
+    "byStreak": "Top rachas",
+    "join": "Unirse a la clasificación",
+    "joined": "¡Estás en la clasificación!",
+    "joinFailed": "No se pudo unir",
+    "optInHint": "Compite en rachas y XP con otros estudiantes. Solo si aceptas: se comparte tu nombre y tus números de progreso — nunca tu contenido.",
+    "loadFailed": "No se pudo cargar la clasificación.",
+    "empty": "Aún no hay nadie — ¡sé el primero!",
+    "you": "tú"
   }
 }

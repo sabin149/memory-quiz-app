@@ -20,6 +20,7 @@ const DATABASE_ID = 'memoryquiz';
 const CONVERSATIONS = 'conversations';
 const QUIZ_ATTEMPTS = 'quiz_attempts';
 const EVENTS = 'events';
+const LEADERBOARD = 'leaderboard';
 const ADMINS_TEAM_ID = 'admins';
 
 function loadDotEnv() {
@@ -179,6 +180,33 @@ async function main() {
     databases.createStringAttribute(DATABASE_ID, EVENTS, 'ownerId', 64, true)
   );
 
+  // Opt-in leaderboard: each user owns exactly one entry (doc id = user id);
+  // all logged-in users can read; only privacy-safe fields are stored.
+  await ensure(`collection ${LEADERBOARD}`, () =>
+    databases.createCollection(
+      DATABASE_ID,
+      LEADERBOARD,
+      'Leaderboard',
+      [Permission.create(Role.users()), Permission.read(Role.users())],
+      true
+    )
+  );
+  await ensure(`${LEADERBOARD}.name`, () =>
+    databases.createStringAttribute(DATABASE_ID, LEADERBOARD, 'name', 64, true)
+  );
+  await ensure(`${LEADERBOARD}.totalXp`, () =>
+    databases.createIntegerAttribute(DATABASE_ID, LEADERBOARD, 'totalXp', true, 0, 100000000)
+  );
+  await ensure(`${LEADERBOARD}.streak`, () =>
+    databases.createIntegerAttribute(DATABASE_ID, LEADERBOARD, 'streak', true, 0, 100000)
+  );
+  await ensure(`${LEADERBOARD}.level`, () =>
+    databases.createIntegerAttribute(DATABASE_ID, LEADERBOARD, 'level', true, 1, 100000)
+  );
+  await ensure(`${LEADERBOARD}.quizzes`, () =>
+    databases.createIntegerAttribute(DATABASE_ID, LEADERBOARD, 'quizzes', true, 0, 100000000)
+  );
+
   await ensure(`team ${ADMINS_TEAM_ID}`, () => teams.create(ADMINS_TEAM_ID, 'Admins'));
   if (process.env.ADMIN_EMAIL) {
     const found = await users.list([Query.equal('email', process.env.ADMIN_EMAIL)]);
@@ -203,6 +231,12 @@ async function main() {
   );
   await ensure(`${EVENTS} index owner_name`, () =>
     databases.createIndex(DATABASE_ID, EVENTS, 'owner_name', 'key', ['ownerId', 'name'])
+  );
+  await ensure(`${LEADERBOARD} index by_xp`, () =>
+    databases.createIndex(DATABASE_ID, LEADERBOARD, 'by_xp', 'key', ['totalXp'])
+  );
+  await ensure(`${LEADERBOARD} index by_streak`, () =>
+    databases.createIndex(DATABASE_ID, LEADERBOARD, 'by_streak', 'key', ['streak'])
   );
 
   console.log('done.');

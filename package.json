@@ -65,7 +65,8 @@
     "react-native-toast-message": "^2.3.3",
     "react-native-web": "~0.20.0",
     "zod": "^4.4.3",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "expo-linear-gradient": "~14.1.5"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
