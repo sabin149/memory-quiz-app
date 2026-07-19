@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import BarChart from '@/components/charts/BarChart';
@@ -8,16 +9,19 @@ import LineChart from '@/components/charts/LineChart';
 import AnimatedBar from '@/components/ui/AnimatedBar';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { fetchAttemptsSince } from '@/services/admin';
-import { fetchEventsSince } from '@/services/analytics';
-import {
-  computeDashboardStats,
-  computeEventBreakdown,
-  DashboardStats,
-} from '@/utils/adminStats';
+import { fetchAdminActivity } from '@/services/admin';
+import { computeDashboardStats, computeEventBreakdown } from '@/utils/adminStats';
 
 const WINDOW_DAYS = 30;
 const CHART_DAYS = 14;
+
+/** Shared with the users screen via the query cache. */
+export function useAdminActivity() {
+  return useQuery({
+    queryKey: ['admin-activity', WINDOW_DAYS],
+    queryFn: () => fetchAdminActivity(WINDOW_DAYS),
+  });
+}
 
 function StatCard({
   icon,
@@ -45,52 +49,28 @@ function StatCard({
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [breakdown, setBreakdown] = useState<{ name: string; count: number }[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isPending, isError, refetch, isRefetching } = useAdminActivity();
 
-  const load = useCallback(async () => {
-    setError(null);
-    setStats(null);
-    try {
-      const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
-      const [events, attempts] = await Promise.all([
-        fetchEventsSince(since),
-        fetchAttemptsSince(since),
-      ]);
-      const eventRecords = events.map((e) => ({
-        name: e.name,
-        ownerId: e.ownerId,
-        createdAt: e.$createdAt,
-      }));
-      const attemptRecords = attempts.map((a) => ({
-        ownerId: a.ownerId,
-        scorePct: a.scorePct,
-        completedAt: a.completedAt,
-      }));
-      setStats(computeDashboardStats(eventRecords, attemptRecords, new Date(), CHART_DAYS));
-      setBreakdown(computeEventBreakdown(eventRecords));
-    } catch {
-      setError(
-        'Could not load analytics. Ensure the database is provisioned (scripts/setup-appwrite.mjs) and your account is in the "admins" team.'
-      );
-    }
-  }, []);
+  const stats = useMemo(
+    () =>
+      data ? computeDashboardStats(data.events, data.attempts, new Date(), CHART_DAYS) : null,
+    [data]
+  );
+  const breakdown = useMemo(() => (data ? computeEventBreakdown(data.events) : []), [data]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  if (error) {
+  if (isError) {
     return (
       <View className="flex-1 justify-center bg-background px-6 dark:bg-dark-bg">
-        <Text className="mb-4 text-center text-gray-500 dark:text-gray-400">{error}</Text>
-        <Button title="Retry" icon="refresh-outline" onPress={load} />
+        <Text className="mb-4 text-center text-gray-500 dark:text-gray-400">
+          Could not load analytics. Ensure the database is provisioned
+          (scripts/setup-appwrite.mjs) and your account is in the &quot;admins&quot; team.
+        </Text>
+        <Button title="Retry" icon="refresh-outline" onPress={() => refetch()} />
       </View>
     );
   }
 
-  if (!stats) {
+  if (isPending || !stats) {
     return (
       <View className="flex-1 items-center justify-center bg-background dark:bg-dark-bg">
         <ActivityIndicator />
@@ -188,7 +168,13 @@ export default function AdminDashboardScreen() {
           icon="people-circle-outline"
           onPress={() => router.push('/admin/users')}
         />
-        <Button title="Refresh" icon="refresh-outline" variant="ghost" onPress={load} className="mt-2" />
+        <Button
+          title={isRefetching ? 'Refreshing…' : 'Refresh'}
+          icon="refresh-outline"
+          variant="ghost"
+          onPress={() => refetch()}
+          className="mt-2"
+        />
       </Animated.View>
     </ScrollView>
   );

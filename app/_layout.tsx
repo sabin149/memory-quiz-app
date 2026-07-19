@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -14,6 +15,12 @@ import './globals.css';
 
 initCrashReporting();
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: true },
+  },
+});
 
 export default function RootLayout() {
   const { authReady, setUser, setAuthReady } = useQuizStore();
@@ -59,7 +66,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <QueryClientProvider client={queryClient}>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -73,6 +80,6 @@ export default function RootLayout() {
         <Stack.Screen name="verify-email" options={{ headerShown: false }} />
       </Stack>
       <Toast config={toastConfig} position="bottom" bottomOffset={70} />
-    </>
+    </QueryClientProvider>
   );
 }

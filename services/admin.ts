@@ -1,5 +1,6 @@
 import { Models, Query, Teams } from 'react-native-appwrite';
 import { client, DATABASE_ID, databases, QUIZ_ATTEMPTS_COLLECTION_ID } from '@/lib/appwrite';
+import { fetchEventsSince } from '@/services/analytics';
 
 const ADMINS_TEAM_ID = 'admins';
 
@@ -26,6 +27,28 @@ export interface QuizAttemptDoc extends Models.Document {
 
 const PAGE_SIZE = 100;
 const MAX_PAGES = 20;
+
+export interface AdminActivity {
+  events: { name: string; ownerId: string; createdAt: string }[];
+  attempts: { ownerId: string; scorePct: number; completedAt: string }[];
+}
+
+/** One fetch powering the dashboard and users screens (shared query cache). */
+export async function fetchAdminActivity(windowDays: number): Promise<AdminActivity> {
+  const since = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000);
+  const [events, attempts] = await Promise.all([
+    fetchEventsSince(since),
+    fetchAttemptsSince(since),
+  ]);
+  return {
+    events: events.map((e) => ({ name: e.name, ownerId: e.ownerId, createdAt: e.$createdAt })),
+    attempts: attempts.map((a) => ({
+      ownerId: a.ownerId,
+      scorePct: a.scorePct,
+      completedAt: a.completedAt,
+    })),
+  };
+}
 
 /** Admin-only: quiz attempts across all users (scores only, no content). */
 export async function fetchAttemptsSince(since: Date): Promise<QuizAttemptDoc[]> {
