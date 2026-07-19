@@ -81,6 +81,8 @@ interface AppState {
   settings: Settings;
   theme: ThemePreference;
   gamification: GamificationState;
+  hasOnboarded: boolean;
+  setHasOnboarded: (done: boolean) => void;
   setUser: (user: User | null) => void;
   setAuthReady: (ready: boolean) => void;
   setIsAdmin: (isAdmin: boolean) => void;
@@ -118,7 +120,9 @@ export const useQuizStore = create<AppState>()(
       settings: { quizIntervalDays: 2, quizTime: '08:00' },
       theme: 'system',
       gamification: EMPTY_GAMIFICATION,
+      hasOnboarded: false,
 
+      setHasOnboarded: (hasOnboarded) => set({ hasOnboarded }),
       setUser: (user) => set(user ? { user } : { user: null, isAdmin: false }),
       setAuthReady: (authReady) => set({ authReady }),
       setIsAdmin: (isAdmin) => set({ isAdmin }),
@@ -336,6 +340,7 @@ export const useQuizStore = create<AppState>()(
         settings: state.settings,
         theme: state.theme,
         gamification: state.gamification,
+        hasOnboarded: state.hasOnboarded,
       }),
       version: 2,
       migrate: (persisted: unknown, version: number) => {

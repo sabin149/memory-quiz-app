@@ -3,5 +3,8 @@ import { useQuizStore } from '@/store';
 
 export default function Index() {
   const user = useQuizStore((s) => s.user);
-  return user ? <Redirect href="/home" /> : <Redirect href="/login" />;
+  const hasOnboarded = useQuizStore((s) => s.hasOnboarded);
+
+  if (user) return <Redirect href="/home" />;
+  return hasOnboarded ? <Redirect href="/login" /> : <Redirect href="/onboarding" />;
 }

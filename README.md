@@ -67,6 +67,7 @@ Built with [Expo](https://expo.dev) (React Native), [expo-router](https://docs.e
 | `npm run web`       | Start on web                    |
 | `npm run lint`      | ESLint via `expo lint`          |
 | `npm run typecheck` | TypeScript check (`tsc --noEmit`) |
+| `npm test`          | Jest unit + component tests     |
 
 ## Project structure
 
@@ -92,6 +93,13 @@ utils/
   sm2.ts                   # SM-2 spaced-repetition algorithm
   validation.ts            # Shared validation patterns
 ```
+
+## Testing & CI
+
+- `npm test` runs 42 Jest tests (SM-2 scheduling, quiz generation, gamification, admin aggregations, validation, UI components) with the `jest-expo` preset.
+- `.gitlab-ci.yml` runs lint, typecheck, and tests (with coverage and JUnit reports) on every merge request and branch push.
+- Crash reporting: set `EXPO_PUBLIC_SENTRY_DSN` to enable Sentry; events are scrubbed of PII before sending. Leave unset to disable entirely.
+- Builds: `eas.json` defines `development`, `preview`, and `production` profiles for EAS Build.
 
 ## Auth
 
@@ -140,6 +148,6 @@ Delivered so far:
 - **Phase 4 — Admin portal & analytics**: privacy-safe event tracking (names + timestamps, never content); `/admin` dashboard gated by the Appwrite "admins" team — DAU/WAU, signups, quiz accuracy, activity chart, per-user drill-down.
 - **Phase 5 — Gamification & design system**: memory strength meter per conversation (decays over time, restored by quizzes), daily streaks, XP/levels with progress, achievements, GitHub-style review heatmap, stats screen, cross-device progress sync via account prefs; shared UI kit (Button/Card/EmptyState), working dark mode with a system/light/dark setting, haptic feedback on answers.
 
-Pending:
+- **Phase 6 — Production hardening**: Jest + React Native Testing Library test suite (42 tests), GitLab CI (lint/typecheck/test with coverage + JUnit reports), opt-in Sentry crash reporting (PII stripped), EAS build profiles, privacy policy screen, first-run onboarding, bundle security scan (no server keys shipped).
 
-- **Phase 6 — Production hardening**: unit + e2e tests, CI, crash reporting, EAS build profiles, privacy policy, security review; onboarding flow.
+Later ideas: Maestro e2e flows, weekly leaderboard, challenge mode, shareable memory reports, ChatGPT/Claude share-link import, folders/topics, web clipper.

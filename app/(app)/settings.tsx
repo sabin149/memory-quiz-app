@@ -150,6 +150,9 @@ export default function SettingsScreen() {
       <Pressable className="mb-4 rounded-lg bg-primary p-3" onPress={handleSave}>
         <Text className="text-center font-semibold text-white">Save</Text>
       </Pressable>
+      <Pressable className="mb-4" onPress={() => router.push('/privacy')}>
+        <Text className="text-center text-secondary dark:text-accent">Privacy policy</Text>
+      </Pressable>
       <Pressable className="mb-10" onPress={() => router.back()}>
         <Text className="text-center text-secondary dark:text-accent">Back</Text>
       </Pressable>

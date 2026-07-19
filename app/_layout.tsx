@@ -3,10 +3,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { colorScheme } from 'nativewind';
 import { useEffect } from 'react';
 import Toast from 'react-native-toast-message';
+import { initCrashReporting } from '@/lib/sentry';
 import { getCurrentUser } from '@/services/auth';
 import { useQuizStore } from '@/store';
 import './globals.css';
 
+initCrashReporting();
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -44,6 +46,8 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="admin" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="privacy" options={{ headerShown: false }} />
         <Stack.Screen name="oauth" options={{ headerShown: false }} />
         <Stack.Screen name="reset-password" options={{ headerShown: false }} />
         <Stack.Screen name="verify-email" options={{ headerShown: false }} />
