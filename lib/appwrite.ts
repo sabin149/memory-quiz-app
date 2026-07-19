@@ -15,3 +15,10 @@ export const client = new Client()
   .setPlatform('com.mycompany.memoryquizapp');
 
 export const account = new Account(client);
+
+/**
+ * Scheme Appwrite trusts out of the box for OAuth/recovery/verification
+ * redirects, without requiring platform registration in the console.
+ * Also registered as an app scheme in app.json.
+ */
+export const appwriteCallbackScheme = `appwrite-callback-${projectId}`;

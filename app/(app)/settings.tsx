@@ -1,17 +1,24 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput } from 'react-native';
 import Toast from 'react-native-toast-message';
+import {
+  deactivateAccount,
+  sendVerificationEmail,
+  toAuthErrorMessage,
+} from '@/services/auth';
 import { useQuizStore } from '@/store';
 import { isValidIntervalDays, TIME_PATTERN } from '@/utils/validation';
 
 export default function SettingsScreen() {
-  const { settings, updateSettings, user } = useQuizStore();
+  const { settings, updateSettings, user, setUser } = useQuizStore();
   const router = useRouter();
 
   const [quizInterval, setQuizInterval] = useState(String(settings.quizIntervalDays));
   const [quizTime, setQuizTime] = useState(settings.quizTime);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const handleSave = () => {
     if (!isValidIntervalDays(quizInterval)) {
@@ -28,10 +35,73 @@ export default function SettingsScreen() {
     router.back();
   };
 
+  const handleSendVerification = async () => {
+    setSendingVerification(true);
+    try {
+      await sendVerificationEmail();
+      Toast.show({
+        type: 'success',
+        text1: 'Verification sent',
+        text2: 'Check your inbox and open the link on this device.',
+      });
+    } catch (error) {
+      Toast.show({ type: 'error', text1: 'Could not send', text2: toAuthErrorMessage(error) });
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'Your account will be deactivated and you will be logged out. You will no longer be able to log in. This cannot be undone from the app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete my account',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deactivateAccount();
+              setUser(null);
+            } catch (error) {
+              Toast.show({
+                type: 'error',
+                text1: 'Deletion failed',
+                text2: toAuthErrorMessage(error),
+              });
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
-    <View className="flex-1 bg-background px-4 py-8 dark:bg-dark-bg sm:px-6">
+    <ScrollView
+      className="flex-1 bg-background dark:bg-dark-bg"
+      contentContainerClassName="px-4 py-8 sm:px-6"
+    >
       <Text className="mb-1 text-black dark:text-dark-text">Signed in as</Text>
-      <Text className="mb-6 font-semibold text-black dark:text-dark-text">{user?.email}</Text>
+      <Text className="mb-1 font-semibold text-black dark:text-dark-text">{user?.email}</Text>
+      {user?.emailVerification ? (
+        <Text className="mb-6 text-green-600">Email verified</Text>
+      ) : (
+        <Pressable
+          className="mb-6"
+          onPress={handleSendVerification}
+          disabled={sendingVerification}
+        >
+          <Text className="text-secondary dark:text-accent">
+            {sendingVerification
+              ? 'Sending verification email…'
+              : 'Email not verified — send verification link'}
+          </Text>
+        </Pressable>
+      )}
 
       <Text className="mb-1 text-black dark:text-dark-text">Quiz interval (days)</Text>
       <TextInput
@@ -54,9 +124,20 @@ export default function SettingsScreen() {
       <Pressable className="mb-4 rounded-lg bg-primary p-3" onPress={handleSave}>
         <Text className="text-center font-semibold text-white">Save</Text>
       </Pressable>
-      <Pressable onPress={() => router.back()}>
+      <Pressable className="mb-10" onPress={() => router.back()}>
         <Text className="text-center text-secondary dark:text-accent">Back</Text>
       </Pressable>
-    </View>
+
+      <Text className="mb-2 font-semibold text-red-500">Danger zone</Text>
+      <Pressable
+        className={`rounded-lg border border-red-500 p-3 ${deleting ? 'opacity-60' : ''}`}
+        onPress={handleDeleteAccount}
+        disabled={deleting}
+      >
+        <Text className="text-center font-semibold text-red-500">
+          {deleting ? 'Deleting account…' : 'Delete account'}
+        </Text>
+      </Pressable>
+    </ScrollView>
   );
 }

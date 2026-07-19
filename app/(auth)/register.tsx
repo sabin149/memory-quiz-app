@@ -11,7 +11,8 @@ import {
   TextInput,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { register, toAuthErrorMessage } from '@/services/auth';
+import OAuthButtons from '@/components/OAuthButtons';
+import { register, sendVerificationEmail, toAuthErrorMessage } from '@/services/auth';
 import { useQuizStore } from '@/store';
 import { EMAIL_PATTERN } from '@/utils/validation';
 
@@ -40,6 +41,8 @@ export default function RegisterScreen() {
     setSubmitting(true);
     try {
       const user = await register(data.name.trim(), data.email.trim(), data.password);
+      // Best effort; the user can resend from Settings if delivery fails.
+      sendVerificationEmail().catch(() => {});
       setUser(user);
       router.replace('/home');
     } catch (error) {
@@ -160,6 +163,7 @@ export default function RegisterScreen() {
             <Text className="text-center font-semibold text-white">Register</Text>
           )}
         </Pressable>
+        <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
         <Pressable onPress={() => router.push('/login')} disabled={submitting}>
           <Text className="text-center text-secondary dark:text-accent">
             Already have an account? Login

@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "memoryquizapp",
+    "scheme": ["memoryquizapp", "appwrite-callback-6a5cc5d9000215008b5b"],
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {

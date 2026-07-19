@@ -11,6 +11,7 @@ import {
   TextInput,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import OAuthButtons from '@/components/OAuthButtons';
 import { login, toAuthErrorMessage } from '@/services/auth';
 import { useQuizStore } from '@/store';
 import { EMAIL_PATTERN } from '@/utils/validation';
@@ -113,6 +114,14 @@ export default function LoginScreen() {
             <Text className="text-center font-semibold text-white">Login</Text>
           )}
         </Pressable>
+        <Pressable
+          className="mb-4"
+          onPress={() => router.push('/forgot-password')}
+          disabled={submitting}
+        >
+          <Text className="text-center text-secondary dark:text-accent">Forgot password?</Text>
+        </Pressable>
+        <OAuthButtons onLoggedIn={setUser} disabled={submitting} />
         <Pressable onPress={() => router.push('/register')} disabled={submitting}>
           <Text className="text-center text-secondary dark:text-accent">
             Don&apos;t have an account? Register
