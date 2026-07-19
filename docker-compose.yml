@@ -1,0 +1,51 @@
+# Usage:
+#   docker compose up expo-tunnel   # dev server, QR scannable from ANY network (recommended)
+#   docker compose up expo-dev      # dev server, LAN mode (phone must reach this machine)
+#   docker compose up web           # production web build on http://localhost:8080
+#
+# Expo Go + Docker: use expo-tunnel. In LAN mode Metro advertises the
+# container's internal IP and corporate firewalls block the phone anyway;
+# the tunnel only needs outbound internet, so its QR works everywhere.
+
+services:
+  expo-tunnel:
+    build:
+      context: .
+      target: dev
+    command: npx expo start --tunnel
+    env_file: .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
+  expo-dev:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8081:8081"
+    environment:
+      # Set to your machine's LAN IP so the QR points at the host, not the
+      # container: HOST_LAN_IP=192.168.1.75 docker compose up expo-dev
+      - REACT_NATIVE_PACKAGER_HOSTNAME=${HOST_LAN_IP:-}
+    env_file: .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # Read from .env automatically by docker compose.
+        - EXPO_PUBLIC_APPWRITE_ENDPOINT=${EXPO_PUBLIC_APPWRITE_ENDPOINT}
+        - EXPO_PUBLIC_APPWRITE_PROJECT_ID=${EXPO_PUBLIC_APPWRITE_PROJECT_ID}
+        - EXPO_PUBLIC_APPWRITE_QUIZ_FUNCTION_ID=${EXPO_PUBLIC_APPWRITE_QUIZ_FUNCTION_ID:-}
+        - EXPO_PUBLIC_SENTRY_DSN=${EXPO_PUBLIC_SENTRY_DSN:-}
+    ports:
+      - "8080:8080"
