@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { confirmAction } from '@/utils/confirm';
 import Card from '@/components/ui/Card';
 import {
   deactivateAccount,
@@ -72,6 +73,12 @@ export default function ProfileScreen() {
   };
 
   const handleLogout = async () => {
+    const confirmed = await confirmAction({
+      title: 'Log out',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Log out',
+    });
+    if (!confirmed) return;
     try {
       await logout();
     } catch {
@@ -80,30 +87,25 @@ export default function ProfileScreen() {
     clearUserData();
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete account',
-      'Your account will be deactivated and you will be logged out. You will no longer be able to log in. This cannot be undone from the app.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete my account',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deactivateAccount();
-              clearUserData();
-            } catch (error) {
-              Toast.show({
-                type: 'error',
-                text1: 'Deletion failed',
-                text2: toAuthErrorMessage(error),
-              });
-            }
-          },
-        },
-      ]
-    );
+  const handleDeleteAccount = async () => {
+    const confirmed = await confirmAction({
+      title: 'Delete account',
+      message:
+        'Your account will be deactivated and you will be logged out. You will no longer be able to log in. This cannot be undone from the app.',
+      confirmLabel: 'Delete my account',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deactivateAccount();
+      clearUserData();
+    } catch (error) {
+      Toast.show({
+        type: 'error',
+        text1: 'Deletion failed',
+        text2: toAuthErrorMessage(error),
+      });
+    }
   };
 
   return (

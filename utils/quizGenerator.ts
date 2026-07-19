@@ -55,6 +55,71 @@ function shuffle<T>(items: T[]): T[] {
 
 const GENERIC_DISTRACTORS = ['process', 'system', 'concept', 'method', 'result', 'context'];
 
+const MAX_STATEMENT_LENGTH = 160;
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function buildDistractors(keyword: string, keywordPool: Set<string>): string[] {
+  const distractors = shuffle(
+    [...keywordPool].filter((w) => w.toLowerCase() !== keyword.toLowerCase() && w.length >= 3)
+  ).slice(0, OPTIONS_PER_QUESTION - 1);
+  // Pad with generic terms when the text is too short to supply distractors.
+  for (const generic of GENERIC_DISTRACTORS) {
+    if (distractors.length >= OPTIONS_PER_QUESTION - 1) break;
+    if (generic.toLowerCase() !== keyword.toLowerCase() && !distractors.includes(generic)) {
+      distractors.push(generic);
+    }
+  }
+  return distractors;
+}
+
+function makeClozeQuestion(
+  sentence: string,
+  keyword: string,
+  keywordPool: Set<string>
+): QuizQuestion | null {
+  const distractors = buildDistractors(keyword, keywordPool);
+  if (distractors.length < OPTIONS_PER_QUESTION - 1) return null;
+
+  const blanked = sentence.replace(new RegExp(`\\b${escapeRegExp(keyword)}\\b`), '_____');
+  if (!blanked.includes('_____')) return null;
+
+  const options = shuffle([keyword, ...distractors]);
+  return {
+    question: `Fill in the blank: ${blanked}`,
+    options,
+    correct: options.indexOf(keyword),
+  };
+}
+
+/**
+ * "Which statement matches your notes?" — the true sentence against corrupted
+ * variants (key term swapped), which tests recognition of meaning rather than
+ * a single word.
+ */
+function makeStatementQuestion(
+  sentence: string,
+  keyword: string,
+  keywordPool: Set<string>
+): QuizQuestion | null {
+  if (sentence.length > MAX_STATEMENT_LENGTH) return null;
+  const distractorWords = buildDistractors(keyword, keywordPool);
+  if (distractorWords.length < OPTIONS_PER_QUESTION - 1) return null;
+
+  const keywordPattern = new RegExp(`\\b${escapeRegExp(keyword)}\\b`);
+  const corrupted = distractorWords.map((w) => sentence.replace(keywordPattern, w));
+  if (corrupted.some((c) => c === sentence)) return null;
+
+  const options = shuffle([sentence, ...corrupted]);
+  return {
+    question: 'Which of these statements matches your notes?',
+    options,
+    correct: options.indexOf(sentence),
+  };
+}
+
 export function generateClozeQuiz(
   content: string,
   maxQuestions: number = DEFAULT_MAX_QUESTIONS
@@ -80,33 +145,14 @@ export function generateClozeQuiz(
     if (!keyword || usedKeywords.has(keyword.toLowerCase())) continue;
     usedKeywords.add(keyword.toLowerCase());
 
-    const distractorPool = shuffle(
-      [...keywordPool].filter(
-        (w) => w.toLowerCase() !== keyword.toLowerCase() && w.length >= 3
-      )
-    );
-    const distractors = distractorPool.slice(0, OPTIONS_PER_QUESTION - 1);
-    // Pad with generic terms when the text is too short to supply distractors.
-    for (const generic of GENERIC_DISTRACTORS) {
-      if (distractors.length >= OPTIONS_PER_QUESTION - 1) break;
-      if (generic.toLowerCase() !== keyword.toLowerCase() && !distractors.includes(generic)) {
-        distractors.push(generic);
-      }
-    }
-    if (distractors.length < OPTIONS_PER_QUESTION - 1) continue;
-
-    const blanked = sentence.replace(
-      new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`),
-      '_____'
-    );
-    if (!blanked.includes('_____')) continue;
-
-    const options = shuffle([keyword, ...distractors]);
-    questions.push({
-      question: `Fill in the blank: ${blanked}`,
-      options,
-      correct: options.indexOf(keyword),
-    });
+    // Alternate question styles for variety; fall back to the other type.
+    const preferStatement = questions.length % 2 === 1;
+    const question = preferStatement
+      ? (makeStatementQuestion(sentence, keyword, keywordPool) ??
+        makeClozeQuestion(sentence, keyword, keywordPool))
+      : (makeClozeQuestion(sentence, keyword, keywordPool) ??
+        makeStatementQuestion(sentence, keyword, keywordPool));
+    if (question) questions.push(question);
   }
 
   return questions;

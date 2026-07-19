@@ -10,7 +10,28 @@ import Card from '@/components/ui/Card';
 import EmptyState from '@/components/ui/EmptyState';
 import { useQuizStore } from '@/store';
 import { computeStreak, levelFromXp } from '@/utils/gamification';
+import { memoryStrength } from '@/utils/memoryStrength';
 import { isDue } from '@/utils/sm2';
+
+/** Urgency-aware due badge: the lower the remaining strength, the louder. */
+function DueBadge({ strength }: { strength: number }) {
+  const fading = strength <= 25;
+  return (
+    <View
+      className={`rounded-full px-2 py-1 ${
+        fading ? 'bg-red-100 dark:bg-red-500/20' : 'bg-orange-100 dark:bg-orange-500/20'
+      }`}
+    >
+      <Text
+        className={`text-xs font-semibold ${
+          fading ? 'text-red-600 dark:text-red-400' : 'text-orange-600 dark:text-orange-400'
+        }`}
+      >
+        {fading ? 'Fading fast' : 'Due'}
+      </Text>
+    </View>
+  );
+}
 
 export default function HomeScreen() {
   const { conversations, remoteAvailable, gamification } = useQuizStore();
@@ -144,10 +165,12 @@ export default function HomeScreen() {
                       {item.tagged ? ' · tagged' : ''}
                     </Text>
                   </View>
-                  {isDue(item.memory) ? (
-                    <View className="rounded-full bg-orange-100 px-2 py-1 dark:bg-orange-500/20">
-                      <Text className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                        Due
+                  {isDue(item.memory) && item.memory.lastReviewedAt ? (
+                    <DueBadge strength={memoryStrength(item.memory)} />
+                  ) : isDue(item.memory) ? (
+                    <View className="rounded-full bg-blue-100 px-2 py-1 dark:bg-blue-500/20">
+                      <Text className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        New
                       </Text>
                     </View>
                   ) : (

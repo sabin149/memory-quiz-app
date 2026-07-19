@@ -48,30 +48,60 @@ export default function SettingsScreen() {
     >
       <Card className="mb-4">
         <Text className="mb-3 font-semibold text-black dark:text-dark-text">Appearance</Text>
-        <View className="flex-row overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-          {THEME_OPTIONS.map(({ value, label, icon }) => (
-            <Pressable
-              key={value}
-              className={`flex-1 flex-row items-center justify-center p-3 ${theme === value ? 'bg-primary' : 'bg-white dark:bg-gray-800'}`}
-              onPress={() => setTheme(value)}
-              accessibilityRole="button"
-              accessibilityState={{ selected: theme === value }}
-            >
-              <Ionicons
-                name={icon}
-                size={16}
-                color={theme === value ? '#fff' : '#9CA3AF'}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                className={`text-center ${
-                  theme === value ? 'font-semibold text-white' : 'text-black dark:text-dark-text'
+        <View className="flex-row gap-3">
+          {THEME_OPTIONS.map(({ value, label, icon }) => {
+            const selected = theme === value;
+            return (
+              <Pressable
+                key={value}
+                className={`flex-1 items-center rounded-xl border-2 p-3 ${
+                  selected
+                    ? 'border-primary bg-primary/5 dark:bg-primary/20'
+                    : 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800'
                 }`}
+                onPress={() => setTheme(value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                accessibilityLabel={`${label} theme`}
               >
-                {label}
-              </Text>
-            </Pressable>
-          ))}
+                {/* Mini preview swatch */}
+                <View
+                  className={`mb-2 h-10 w-full overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 ${
+                    value === 'dark' ? 'bg-gray-900' : value === 'light' ? 'bg-gray-100' : ''
+                  }`}
+                >
+                  {value === 'system' ? (
+                    <View className="flex-1 flex-row">
+                      <View className="flex-1 bg-gray-100" />
+                      <View className="flex-1 bg-gray-900" />
+                    </View>
+                  ) : (
+                    <View className="m-2 h-1.5 w-2/3 rounded-full bg-primary/60" />
+                  )}
+                </View>
+                <View className="flex-row items-center">
+                  <Ionicons name={icon} size={14} color={selected ? '#4B5EAA' : '#9CA3AF'} />
+                  <Text
+                    className={`ml-1 text-sm ${
+                      selected
+                        ? 'font-semibold text-primary dark:text-dark-text'
+                        : 'text-gray-600 dark:text-gray-300'
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                  {selected && (
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={14}
+                      color="#4B5EAA"
+                      style={{ marginLeft: 4 }}
+                    />
+                  )}
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
       </Card>
 

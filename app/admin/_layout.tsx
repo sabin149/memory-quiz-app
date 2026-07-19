@@ -38,7 +38,13 @@ export default function AdminLayout() {
   }
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: '#4B5EAA' },
+        headerTintColor: '#fff',
+        headerTitleStyle: { fontWeight: '700' },
+      }}
+    >
       <Stack.Screen name="index" options={{ title: 'Admin — Dashboard' }} />
       <Stack.Screen name="users" options={{ title: 'Admin — Users' }} />
       <Stack.Screen name="user/[userId]" options={{ title: 'Admin — User activity' }} />

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { confirmAction } from '@/utils/confirm';
 import StrengthBar from '@/components/StrengthBar';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -66,22 +67,17 @@ export default function ConversationDetailScreen() {
   const strength = memoryStrength(conversation.memory);
   const due = isDue(conversation.memory);
 
-  const confirmDelete = () => {
-    Alert.alert(
-      'Delete conversation',
-      `Delete "${conversation.title}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            removeConversation(conversation.id);
-            router.back();
-          },
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    const confirmed = await confirmAction({
+      title: 'Delete conversation',
+      message: `Delete "${conversation.title}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (confirmed) {
+      removeConversation(conversation.id);
+      router.back();
+    }
   };
 
   return (

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { FlatList, Modal, Pressable, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 export interface Country {
   name: string;
@@ -44,6 +44,20 @@ interface CountryCodePickerProps {
 
 export default function CountryCodePicker({ value, onChange, disabled }: CountryCodePickerProps) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return COUNTRIES;
+    return COUNTRIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.dial.includes(q)
+    );
+  }, [search]);
+
+  const close = () => {
+    setOpen(false);
+    setSearch('');
+  };
 
   return (
     <>
@@ -59,26 +73,45 @@ export default function CountryCodePicker({ value, onChange, disabled }: Country
         <Ionicons name="chevron-down" size={14} color="#9CA3AF" style={{ marginLeft: 4 }} />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" transparent onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} animationType="slide" transparent onRequestClose={close}>
         <View className="flex-1 justify-end bg-black/40">
+          {/* Tapping the backdrop dismisses the picker. */}
+          <Pressable className="flex-1" onPress={close} accessibilityLabel="Close country picker" />
           <View className="max-h-[70%] rounded-t-2xl bg-white p-4 dark:bg-gray-900">
             <View className="mb-2 flex-row items-center justify-between">
               <Text className="text-lg font-semibold text-black dark:text-dark-text">
                 Country code
               </Text>
-              <Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Close">
+              <Pressable
+                onPress={close}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                hitSlop={12}
+              >
                 <Ionicons name="close" size={24} color="#9CA3AF" />
               </Pressable>
             </View>
+            <View className="mb-2 flex-row items-center rounded-lg border border-gray-300 bg-white px-3 dark:border-gray-600 dark:bg-gray-800">
+              <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+              <TextInput
+                className="flex-1 p-2.5 text-black dark:text-white"
+                placeholder="Search country or code"
+                placeholderTextColor="#9CA3AF"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="none"
+                accessibilityLabel="Search countries"
+              />
+            </View>
             <FlatList
-              data={COUNTRIES}
+              data={filtered}
               keyExtractor={(item) => `${item.name}-${item.dial}`}
               renderItem={({ item }) => (
                 <Pressable
                   className="flex-row items-center border-b border-gray-100 py-3 dark:border-gray-800"
                   onPress={() => {
                     onChange(item);
-                    setOpen(false);
+                    close();
                   }}
                   accessibilityRole="button"
                 >

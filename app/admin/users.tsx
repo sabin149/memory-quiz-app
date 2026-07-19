@@ -15,13 +15,19 @@ export default function AdminUsersScreen() {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [limit, setLimit] = useState(PAGE);
+  const [sortBy, setSortBy] = useState<'recent' | 'quizzes' | 'accuracy'>('recent');
 
   const visible = useMemo(() => {
     if (!users) return null;
     const q = query.trim().toLowerCase();
     const filtered = q ? users.filter((u) => u.ownerId.toLowerCase().includes(q)) : users;
-    return { items: filtered.slice(0, limit), total: filtered.length };
-  }, [users, query, limit]);
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === 'quizzes') return b.quizzes - a.quizzes;
+      if (sortBy === 'accuracy') return (b.avgScorePct ?? -1) - (a.avgScorePct ?? -1);
+      return b.lastActiveAt.localeCompare(a.lastActiveAt);
+    });
+    return { items: sorted.slice(0, limit), total: sorted.length };
+  }, [users, query, limit, sortBy]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -90,6 +96,35 @@ export default function AdminUsersScreen() {
           autoCapitalize="none"
           accessibilityLabel="Filter users by id"
         />
+      </View>
+      <View className="mb-3 flex-row">
+        {(
+          [
+            { value: 'recent', label: 'Recent' },
+            { value: 'quizzes', label: 'Most quizzes' },
+            { value: 'accuracy', label: 'Accuracy' },
+          ] as const
+        ).map(({ value, label }) => (
+          <Pressable
+            key={value}
+            className={`mr-2 rounded-full border px-3 py-1.5 ${
+              sortBy === value
+                ? 'border-primary bg-primary'
+                : 'border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-800'
+            }`}
+            onPress={() => setSortBy(value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sortBy === value }}
+          >
+            <Text
+              className={
+                sortBy === value ? 'text-xs font-semibold text-white' : 'text-xs text-black dark:text-dark-text'
+              }
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
       <FlatList
         data={visible?.items ?? []}
